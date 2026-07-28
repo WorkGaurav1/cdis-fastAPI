@@ -16,7 +16,7 @@ COPY --from=builder /app/wheels /wheels
 COPY --from=builder /app/pyproject.toml .
 
 RUN pip install --no-cache /wheels/* && \
-    pip install fastapi uvicorn pydantic pydantic-settings sqlalchemy psycopg2-binary
+    pip install fastapi uvicorn pydantic pydantic-settings sqlmodel psycopg2-binary
 
 COPY ./src/app /app/src/app
 

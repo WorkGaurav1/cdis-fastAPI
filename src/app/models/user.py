@@ -1,14 +1,9 @@
-from sqlalchemy import Boolean, Column, Integer, String
-from sqlalchemy.orm import declarative_base
+from sqlmodel import Field
+from typing import Optional
+from app.schemas.user import UserBase
 
-Base = declarative_base()
-
-class User(Base):
+class User(UserBase, table=True):
     __tablename__ = "users"
-
-    id = Column(Integer, primary_key=True, index=True)
-    full_name = Column(String, index=True)
-    email = Column(String, unique=True, index=True, nullable=False)
-    hashed_password = Column(String, nullable=False)
-    is_active = Column(Boolean, default=True)
-    is_superuser = Column(Boolean, default=False)
+    
+    id: Optional[int] = Field(default=None, primary_key=True)
+    hashed_password: str

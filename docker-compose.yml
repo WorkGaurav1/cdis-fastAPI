@@ -2,15 +2,16 @@ version: '3.8'
 
 services:
   db:
-    image: postgres:15
+    image: mysql:8.0
     environment:
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: dbname
+      MYSQL_USER: user
+      MYSQL_PASSWORD: password
+      MYSQL_DATABASE: dbname
+      MYSQL_ROOT_PASSWORD: rootpassword
     ports:
-      - "5432:5432"
+      - "3306:3306"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - mysql_data:/var/lib/mysql
 
   api:
     build:
@@ -21,10 +22,10 @@ services:
     volumes:
       - ./src:/app/src
     environment:
-      - DATABASE_URL=postgresql://user:password@db/dbname
+      - DATABASE_URL=mysql+pymysql://user:password@db/dbname
     depends_on:
       - db
     command: uvicorn src.app.main:app --host 0.0.0.0 --port 8000 --reload
 
 volumes:
-  postgres_data:
+  mysql_data:

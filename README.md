@@ -65,5 +65,4 @@ just down
 
 If you are new to this repository or want to understand *why* things are built the way they are, please read our internal documentation:
 
-*   📖 **[Architecture Explanation & Glossary](docs/explanation.md)**: A complete breakdown of what every file in this repository does.
 *   🔗 **[Official References](docs/REFERENCES.md)**: Links to the exact tutorials and official documentation that inspired this codebase.

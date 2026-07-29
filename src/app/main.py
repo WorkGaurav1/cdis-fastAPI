@@ -1,6 +1,6 @@
 from fastapi import FastAPI
-from app.api.v1.endpoints import users
-from app.core.config import settings
+from features.users import api as users
+from config.config import settings
 
 app = FastAPI(
     title=settings.PROJECT_NAME,

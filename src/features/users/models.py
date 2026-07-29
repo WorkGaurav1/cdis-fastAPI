@@ -1,6 +1,6 @@
 from sqlmodel import Field
 from typing import Optional
-from app.schemas.user import UserBase
+from features.users.schemas import UserBase
 
 class User(UserBase, table=True):
     __tablename__ = "users"

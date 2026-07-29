@@ -26,12 +26,15 @@ Instead of stuffing all your endpoints (users, products, orders) into one massiv
 
 ## File-by-File Breakdown
 
-### The Application Core (`src/app/`)
-*   **`main.py`**: The entrypoint of the application. It creates the FastAPI instance, mounts the `/api/v1` prefix, and attaches the routers.
-*   **`core/config.py`**: Uses `pydantic-settings` to securely load and validate environment variables (like your `DATABASE_URL` and `PROJECT_NAME`).
-*   **`api/v1/endpoints/users.py`**: Contains the actual API logic (path operations) for user-related actions, like fetching all users or creating a new user.
-*   **`schemas/user.py`**: Contains `SQLModel` schemas that define the shape of data moving across the network (e.g., `UserCreate` for input, `UserResponse` for output).
-*   **`models/user.py`**: Contains the `SQLModel` database definition (with `table=True`). This tells MySQL exactly what columns the `users` table should have.
+### The Application Core (`src/`)
+*   **`app/main.py`**: The entrypoint of the application. It creates the FastAPI instance, mounts the `/api/v1` prefix, and attaches the feature routers.
+*   **`config/config.py`**: Uses `pydantic-settings` to securely load and validate environment variables (like your `DATABASE_URL` and `PROJECT_NAME`).
+
+### Features (`src/features/`)
+This repository uses a Feature-Based (Domain-Driven) architecture. Everything related to a specific domain lives in its own folder. For example, the `users/` feature:
+*   **`users/api.py`**: Contains the actual API logic (path operations) for user-related actions, like fetching all users or creating a new user.
+*   **`users/schemas.py`**: Contains `SQLModel` schemas that define the shape of data moving across the network (e.g., `UserCreate` for input, `UserResponse` for output).
+*   **`users/models.py`**: Contains the `SQLModel` database definition (with `table=True`). This tells MySQL exactly what columns the `users` table should have.
 
 ### Infrastructure & DevOps
 *   **`docker-compose.yml`**: A configuration file for Docker that lets developers spin up the API and a MySQL database locally with one command.

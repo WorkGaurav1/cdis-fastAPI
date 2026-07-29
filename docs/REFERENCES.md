@@ -12,7 +12,7 @@ The `src/app` separation, along with splitting `api/`, `core/`, `models/`, and `
     * *Explains how to split a messy single-file app into multiple modular files and folders.*
 *   **Python Packaging Authority (The `src` layout):** [https://packaging.python.org/en/latest/discussions/src-layout-vs-flat-layout/](https://packaging.python.org/en/latest/discussions/src-layout-vs-flat-layout/)
 
-## 2. Configuration (`src/app/core/config.py`)
+## 2. Configuration (`src/config/config.py`)
 The use of `pydantic-settings` with `BaseSettings` and `SettingsConfigDict` to load environment variables and validate settings is the official approach recommended by both Pydantic v2 and FastAPI.
 *   **Pydantic Settings Documentation:** [https://docs.pydantic.dev/latest/concepts/pydantic_settings/](https://docs.pydantic.dev/latest/concepts/pydantic_settings/)
 *   **FastAPI Advanced Settings:** [https://fastapi.tiangolo.com/advanced/settings/](https://fastapi.tiangolo.com/advanced/settings/)
@@ -25,13 +25,13 @@ The initialization of the `FastAPI` app, the inclusion of `APIRouter`s, and the 
 *   **FastAPI Router Inclusion:** [https://fastapi.tiangolo.com/tutorial/bigger-applications/#include-an-apirouter-with-a-custom-prefix-tags-responses-and-dependencies](https://fastapi.tiangolo.com/tutorial/bigger-applications/#include-an-apirouter-with-a-custom-prefix-tags-responses-and-dependencies)
     * *Demonstrates how to attach your separate API files (routers) to the main application hub.*
 
-## 4. Models and Schemas (`src/app/models/user.py` & `src/app/schemas/user.py`)
+## 4. Models and Schemas (`src/features/users/models.py` & `src/features/users/schemas.py`)
 The code structure unifying Pydantic data validation with SQLAlchemy ORM models using `SQLModel` comes directly from the SQLModel official tutorial. The use of a `Base` class with `table=True` for the database model is a hallmark of SQLModel design.
 *   **SQLModel Main Tutorial:** [https://sqlmodel.tiangolo.com/tutorial/](https://sqlmodel.tiangolo.com/tutorial/)
 *   **SQLModel with FastAPI:** [https://sqlmodel.tiangolo.com/tutorial/fastapi/](https://sqlmodel.tiangolo.com/tutorial/fastapi/)
     * *Explains how to seamlessly blend database models and API schemas into a single source of truth.*
 
-## 5. Endpoints (`src/app/api/v1/endpoints/users.py`)
+## 5. Endpoints (`src/features/users/api.py`)
 The definition of HTTP verbs (`@router.get`, `@router.post`), dependency injection, and `response_model` enforcement comes from the FastAPI routing guides.
 *   **FastAPI Path Operations:** [https://fastapi.tiangolo.com/tutorial/path-params/](https://fastapi.tiangolo.com/tutorial/path-params/)
     * *Teaches how to create endpoints (like GET and POST) and read parameters from the URL.*

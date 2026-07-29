@@ -1,4 +1,4 @@
-# CDIS Template FastAPI 🚀
+# Template FastAPI 
 
 Welcome to the **CDIS Standard Template for FastAPI Applications**. This repository serves as the foundational boilerplate for building highly secure, production-grade, and scalable backend services within the organization.
 
@@ -6,7 +6,7 @@ It enforces a strict, modular architecture designed for developer productivity, 
 
 ---
 
-## 🛠 Technologies Used
+##  Technologies Used
 
 This template is built on the shoulders of industry giants, utilizing the most modern and robust Python tooling available:
 
@@ -19,7 +19,7 @@ This template is built on the shoulders of industry giants, utilizing the most m
 
 ---
 
-## 🚀 Getting Started (Local Development)
+## Getting Started (Local Development)
 
 We believe in **Developer Experience First**. You do not need to install Python, configure virtual environments, or set up local databases to start working on this project. 
 
@@ -61,7 +61,7 @@ just down
 
 ---
 
-## 📚 Further Reading
+##  Further Reading
 
 If you are new to this repository or want to understand *why* things are built the way they are, please read our internal documentation:
 

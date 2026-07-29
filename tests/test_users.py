@@ -1,5 +1,5 @@
 from fastapi.testclient import TestClient
-from app.core.config import settings
+from config.config import settings
 
 def test_health_check(client: TestClient):
     response = client.get("/health")

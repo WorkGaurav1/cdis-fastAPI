@@ -16,9 +16,9 @@ COPY --from=builder /app/wheels /wheels
 COPY --from=builder /app/pyproject.toml .
 
 RUN pip install --no-cache /wheels/* && \
-    pip install fastapi uvicorn pydantic pydantic-settings sqlmodel pymysql
+    pip install fastapi uvicorn "pydantic[email]" pydantic-settings sqlmodel pymysql
 
-COPY ./src/app /app/src/app
+COPY ./src /app/src
 
 ENV PYTHONPATH=/app/src
 

@@ -7,13 +7,17 @@ and attaching the individual feature routers (like users, auth, etc.) to the mai
 # ---------------------------------------------------------
 # External Imports
 # ---------------------------------------------------------
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from slowapi.errors import RateLimitExceeded
+from slowapi import _rate_limit_exceeded_handler
 
 # ---------------------------------------------------------
 # Internal Imports
 # ---------------------------------------------------------
 from config.config import settings
+from app.limiter import limiter
 from features.users import api as users
+from features.auth import api as auth
 
 # Initialize the core FastAPI web application using settings from our config file
 app = FastAPI(
@@ -21,7 +25,30 @@ app = FastAPI(
     openapi_url=f"{settings.API_V1_STR}/openapi.json"
 )
 
-# Attach the 'users' feature router to the main app, automatically prefixing all its URLs
+# ---------------------------------------------------------
+# Security & Rate Limiting (VAPT Requirements)
+# ---------------------------------------------------------
+# Attach Rate Limiter to the app
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    """
+    Middleware to globally inject security headers to satisfy VAPT Task 1.5.
+    """
+    response = await call_next(request)
+    response.headers["Content-Security-Policy"] = "default-src 'self'; frame-ancestors 'none'"
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    return response
+
+# ---------------------------------------------------------
+# Feature Routers
+# ---------------------------------------------------------
+# Attach feature routers to the main app, automatically prefixing all URLs
+app.include_router(auth.router, prefix=f"{settings.API_V1_STR}/auth", tags=["auth"])
 app.include_router(users.router, prefix=f"{settings.API_V1_STR}/users", tags=["users"])
 
 @app.get("/health", tags=["health"])
@@ -31,3 +58,4 @@ def health_check():
     Used by load balancers and container orchestrators (like Docker/Kubernetes) to verify the server is running.
     """
     return {"status": "ok"}
+

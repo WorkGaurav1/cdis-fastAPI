@@ -12,6 +12,9 @@ dependencies = [
     # Database Connector (Driver). If you switch to PostgreSQL, 
     # replace this with "psycopg2-binary>=2.9.0" or similar.
     "pymysql>=1.1.0",
+    "slowapi>=0.1.9",
+    "pyjwt>=2.8.0",
+    "passlib[bcrypt]>=1.7.4",
 ]
 
 [project.optional-dependencies]

@@ -44,7 +44,7 @@ def create_user(user_in: UserCreate):
                 status_code=400,
                 detail="The user with this username already exists in the system.",
             )
-    
+
     # Construct a new user dictionary. In a real app, this would be an SQLModel database insert.
     new_user = {
         "id": len(fake_users_db) + 1,
@@ -54,8 +54,8 @@ def create_user(user_in: UserCreate):
         "full_name": user_in.full_name,
         "hashed_password": user_in.password + "notreallyhashed" # Simulating password hashing
     }
-    
+
     # Save the user to our dummy database
     fake_users_db.append(new_user)
-    
+
     return new_user

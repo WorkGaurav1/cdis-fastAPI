@@ -5,7 +5,7 @@ WORKDIR /app
 COPY pyproject.toml .
 
 RUN pip install --no-cache-dir pip==23.2.1 && \
-    pip wheel --no-cache-dir --no-deps --wheel-dir /app/wheels .
+    pip wheel --no-cache-dir --wheel-dir /app/wheels .
 
 # Final stage
 FROM python:3.10-slim
@@ -15,8 +15,7 @@ WORKDIR /app
 COPY --from=builder /app/wheels /wheels
 COPY --from=builder /app/pyproject.toml .
 
-RUN pip install --no-cache /wheels/* && \
-    pip install fastapi uvicorn "pydantic[email]" pydantic-settings sqlmodel pymysql
+RUN pip install --no-cache /wheels/*
 
 COPY ./src /app/src
 

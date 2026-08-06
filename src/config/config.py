@@ -19,7 +19,10 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "CDIS Template FastAPI"
     API_V1_STR: str = "/api/v1"
     
-    # The connection string used to connect to the MySQL database
+    # The connection string used to connect to the Database.
+    # To switch databases, simply change the URL prefix! For example:
+    # Postgres: "postgresql+psycopg2://user:password@localhost/dbname"
+    # MongoDB:  "mongodb://user:password@localhost:27017/dbname" (Note: MongoDB requires an ODM like Beanie instead of SQLModel)
     DATABASE_URL: str = "mysql+pymysql://user:password@localhost/dbname"
 
     # Tell pydantic to read from a .env file if it exists, and ignore extra variables it doesn't recognize

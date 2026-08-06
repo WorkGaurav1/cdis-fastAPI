@@ -9,6 +9,8 @@ dependencies = [
     "pydantic[email]>=2.0.0",
     "pydantic-settings>=2.0.0",
     "sqlmodel>=0.0.14",
+    # Database Connector (Driver). If you switch to PostgreSQL, 
+    # replace this with "psycopg2-binary>=2.9.0" or similar.
     "pymysql>=1.1.0",
 ]
 

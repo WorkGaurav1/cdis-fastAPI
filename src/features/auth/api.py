@@ -1,13 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Request, Response
-from sqlmodel import Session, select
+from fastapi import APIRouter, HTTPException, status, Request, Response
 from datetime import timedelta
 
-# Imports for database and rate limiting
-from config.database import get_session
+# Imports for rate limiting
 from app.limiter import limiter
 
 # Feature imports
-from features.users.models import User
+from features.users.api import fake_users_db
 from features.auth.schemas import LoginRequest, Token
 from features.auth.security import verify_password, create_access_token
 
@@ -26,19 +24,17 @@ invalid_credentials_exception = HTTPException(
 def login(
     request: Request,
     response: Response,
-    login_data: LoginRequest,
-    session: Session = Depends(get_session)
+    login_data: LoginRequest
 ):
     """
     Authenticate a user and return a JWT token.
     This endpoint is strictly rate-limited and immune to username enumeration.
     """
-    # 1. Fetch user by email
-    statement = select(User).where(User.email == login_data.email)
-    user = session.exec(statement).first()
+    # 1. Fetch user by email from the dummy database (would be SQLModel in prod)
+    user = next((u for u in fake_users_db if u.get("email") == login_data.email), None)
 
     # 2. Verify existence AND password using the generic exception
-    if not user or not verify_password(login_data.password, user.hashed_password):
+    if not user or not verify_password(login_data.password, user.get("hashed_password")):
         raise invalid_credentials_exception
 
     # 3. Generate secure JWT token (VAPT Task 1.2)

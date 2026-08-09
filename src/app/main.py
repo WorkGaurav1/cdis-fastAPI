@@ -8,6 +8,7 @@ and attaching the individual feature routers (like users, auth, etc.) to the mai
 # External Imports
 # ---------------------------------------------------------
 from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 from slowapi.errors import RateLimitExceeded
 from slowapi import _rate_limit_exceeded_handler
 
@@ -23,6 +24,23 @@ from features.auth import api as auth
 app = FastAPI(
     title=settings.PROJECT_NAME,
     openapi_url=f"{settings.API_V1_STR}/openapi.json"
+)
+
+# ---------------------------------------------------------
+# CORS (Frontend Interoperability)
+# ---------------------------------------------------------
+# This allows the React/Vite frontend (running on ports 5173 or 3000) 
+# to securely communicate with this FastAPI backend.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "http://localhost:3001",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # ---------------------------------------------------------

@@ -15,47 +15,48 @@ from fastapi import APIRouter, HTTPException, status
 # ---------------------------------------------------------
 from features.users.schemas import UserCreate, UserResponse
 
-# Create an APIRouter instance specifically for user-related endpoints
+from utils.apiResponse import send_success
+
 router = APIRouter()
 
-# A temporary dummy list to simulate a database for demonstration purposes
-fake_users_db = []
+# Precomputed bcrypt hash for the word 'password'. 
+# We hardcode this here to avoid triggering a known passlib/bcrypt startup bug 
+# during module initialization.
+fake_hashed_password = "$2b$12$lXBpIAx1aoTzuu9.jNP9J.VBowa/09bmeM41NjDBtFygiAQzg4mzi"
 
-@router.get("/", response_model=List[UserResponse])
-def read_users(skip: int = 0, limit: int = 100):
-    """
-    Retrieve a list of all users.
-    Supports pagination through 'skip' and 'limit' query parameters.
-    """
-    # Slice the dummy database list based on the pagination parameters
-    return fake_users_db[skip : skip + limit]
-
-@router.post("/", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
-def create_user(user_in: UserCreate):
-    """
-    Create a new user.
-    Validates that the email does not already exist before creating.
-    """
-    # Check if a user with this email already exists to prevent duplicates
-    for u in fake_users_db:
-        # Note: u is a dict here because fake_users_db stores dicts in this example
-        if u.get("email") == user_in.email:
-            raise HTTPException(
-                status_code=400,
-                detail="The user with this username already exists in the system.",
-            )
-
-    # Construct a new user dictionary. In a real app, this would be an SQLModel database insert.
-    new_user = {
-        "id": len(fake_users_db) + 1,
-        "email": user_in.email,
-        "is_active": user_in.is_active,
-        "is_superuser": user_in.is_superuser,
-        "full_name": user_in.full_name,
-        "hashed_password": user_in.password + "notreallyhashed" # Simulating password hashing
+fake_users_db = [
+    {
+        "id": "user_1",
+        "email": "admin@example.com",
+        "name": "Super Admin",
+        "roles": ["ADMIN", "USER"],
+        "permissions": ["read:users", "write:users", "read:dashboard"],
+        "hashed_password": fake_hashed_password
+    },
+    {
+        "id": "user_2",
+        "email": "manager@example.com",
+        "name": "Project Manager",
+        "roles": ["MANAGER", "USER"],
+        "permissions": ["read:users", "read:dashboard"],
+        "hashed_password": fake_hashed_password
+    },
+    {
+        "id": "user_3",
+        "email": "user@example.com",
+        "name": "Standard User",
+        "roles": ["USER"],
+        "permissions": ["read:dashboard"],
+        "hashed_password": fake_hashed_password
     }
+]
 
-    # Save the user to our dummy database
-    fake_users_db.append(new_user)
+@router.get("")
+def read_users(skip: int = 0, limit: int = 100):
+    """Retrieve a list of all users."""
+    safe_users = [
+        {k: v for k, v in u.items() if k != "hashed_password"} 
+        for u in fake_users_db[skip : skip + limit]
+    ]
+    return send_success({"users": safe_users})
 
-    return new_user

@@ -19,6 +19,7 @@ from config.config import settings
 from app.limiter import limiter
 from features.users import api as users
 from features.auth import api as auth
+from features.demo import api as demo
 
 # Initialize the core FastAPI web application using settings from our config file
 app = FastAPI(
@@ -75,6 +76,7 @@ async def add_security_headers(request: Request, call_next):
 # Attach feature routers to the main app, automatically prefixing all URLs
 app.include_router(auth.router, prefix=f"{settings.API_V1_STR}/auth", tags=["auth"])
 app.include_router(users.router, prefix=f"{settings.API_V1_STR}/users", tags=["users"])
+app.include_router(demo.router, prefix=f"{settings.API_V1_STR}/demo", tags=["demo"])
 
 @app.get("/health", tags=["health"])
 def health_check():

@@ -1,7 +1,7 @@
 # Engineering Standards
 
 ## Linting & Formatting
-This project uses **Ruff**, an extremely fast Python linter, instead of ESLint (which is JavaScript specific).
+This project uses **Ruff**, an extremely fast Python linter.
 
 - All Python code must comply with the `pyproject.toml` Ruff rules.
 - Line length is capped at 88 characters.

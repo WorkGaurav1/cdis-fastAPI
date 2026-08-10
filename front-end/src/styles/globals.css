@@ -1,0 +1,45 @@
+@import "tailwindcss";
+
+@theme {
+  /*
+   * Brand palette sampled directly from the CDIS logo (flask outline +
+   * red/green/blue/orange/yellow center mark). Primary is the logo's
+   * red, verified at 6.4:1 contrast against white — comfortably above
+   * WCAG AA (4.5:1) for body text, not just large text/UI elements.
+   */
+  --color-primary: #c10003;
+  --color-accent-green: #25b146;
+  --color-accent-blue: #00a5f1;
+  --color-accent-orange: #fc7f2d;
+  --color-accent-yellow: #fbc200;
+  --font-sans: "Inter", system-ui, sans-serif;
+}
+
+@layer base {
+  body {
+    font-family: var(--font-sans);
+  }
+}
+
+@layer utilities {
+  @keyframes fade-up {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .animate-fade-up {
+    animation: fade-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .animate-fade-up {
+      animation: none;
+    }
+  }
+}

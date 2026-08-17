@@ -1,18 +1,7 @@
-"""
-Application Configuration Module.
-This file handles loading and validating all environment variables (e.g., from a .env file).
-It ensures that the application will not start if required secrets are missing.
-"""
+# Application Configuration Module.
 
-# ---------------------------------------------------------
-# External Imports
-# ---------------------------------------------------------
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-# ---------------------------------------------------------
-# Internal Imports
-# ---------------------------------------------------------
-# (No internal imports for the config module)
 
 class Settings(BaseSettings):
     # These values can be overridden by a local .env file or system environment variables

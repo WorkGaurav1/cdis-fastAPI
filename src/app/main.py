@@ -1,20 +1,10 @@
-"""
-Main Application Entrypoint.
-This file is responsible for initializing the FastAPI app, configuring global settings,
-and attaching the individual feature routers (like users, auth, etc.) to the main application hub.
-"""
+# Main Application Entrypoint.
 
-# ---------------------------------------------------------
-# External Imports
-# ---------------------------------------------------------
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi.errors import RateLimitExceeded
 from slowapi import _rate_limit_exceeded_handler
 
-# ---------------------------------------------------------
-# Internal Imports
-# ---------------------------------------------------------
 from config.config import settings
 from app.limiter import limiter
 from features.users import api as users
@@ -27,9 +17,7 @@ app = FastAPI(
     openapi_url=f"{settings.API_V1_STR}/openapi.json"
 )
 
-# ---------------------------------------------------------
 # CORS (Frontend Interoperability)
-# ---------------------------------------------------------
 # This allows the React/Vite frontend (running on ports 5173 or 3000) 
 # to securely communicate with this FastAPI backend.
 app.add_middleware(
@@ -44,18 +32,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ---------------------------------------------------------
 # Security & Rate Limiting (VAPT Requirements)
-# ---------------------------------------------------------
 # Attach Rate Limiter to the app
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 @app.middleware("http")
 async def add_security_headers(request: Request, call_next):
-    """
-    Middleware to globally inject security headers to satisfy VAPT Task 1.5.
-    """
+    # Middleware to globally inject security headers to satisfy VAPT Task 1.5.
     response = await call_next(request)
     # Relaxed CSP to allow FastAPI's Swagger UI to load its external JS/CSS from jsdelivr
     response.headers["Content-Security-Policy"] = (
@@ -70,9 +54,7 @@ async def add_security_headers(request: Request, call_next):
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     return response
 
-# ---------------------------------------------------------
 # Feature Routers
-# ---------------------------------------------------------
 # Attach feature routers to the main app, automatically prefixing all URLs
 app.include_router(auth.router, prefix=f"{settings.API_V1_STR}/auth", tags=["auth"])
 app.include_router(users.router, prefix=f"{settings.API_V1_STR}/users", tags=["users"])

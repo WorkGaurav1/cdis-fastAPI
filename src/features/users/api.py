@@ -1,18 +1,8 @@
-"""
-Users API Router.
-This file defines all the HTTP endpoints (path operations) for the "Users" feature.
-It handles incoming web requests, performs business logic, and returns responses.
-"""
+# Users API Router.
 
-# ---------------------------------------------------------
-# External Imports
-# ---------------------------------------------------------
 from typing import List
 from fastapi import APIRouter, HTTPException, status
 
-# ---------------------------------------------------------
-# Internal Imports
-# ---------------------------------------------------------
 from features.users.schemas import UserCreate, UserResponse
 
 from utils.apiResponse import send_success
@@ -53,7 +43,7 @@ fake_users_db = [
 
 @router.get("")
 def read_users(skip: int = 0, limit: int = 100):
-    """Retrieve a list of all users."""
+    # Retrieve a list of all users.
     safe_users = [
         {k: v for k, v in u.items() if k != "hashed_password"} 
         for u in fake_users_db[skip : skip + limit]

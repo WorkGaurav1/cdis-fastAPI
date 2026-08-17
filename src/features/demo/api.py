@@ -15,5 +15,5 @@ fake_states_db = [
 
 @router.get("/map/states")
 def get_map_states():
-    """Returns dummy statistics for state boundaries."""
+    # Returns dummy statistics for state boundaries.
     return send_success({"states": fake_states_db})

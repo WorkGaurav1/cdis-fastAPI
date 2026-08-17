@@ -1,18 +1,8 @@
-"""
-Users Database Models.
-This file defines the SQLModel tables that represent exactly how data is stored 
-in the relational database (MySQL) for the "Users" feature.
-"""
+# Users Database Models.
 
-# ---------------------------------------------------------
-# External Imports
-# ---------------------------------------------------------
 from typing import Optional
 from sqlmodel import Field
 
-# ---------------------------------------------------------
-# Internal Imports
-# ---------------------------------------------------------
 from features.users.schemas import UserBase
 
 class User(UserBase, table=True):

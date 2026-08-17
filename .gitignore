@@ -25,3 +25,8 @@ dist/
 # IDE
 .vscode/
 .idea/
+
+# Ignored Folders
+front-end/
+node_front+back/
+

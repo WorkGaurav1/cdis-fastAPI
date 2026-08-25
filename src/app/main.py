@@ -2,20 +2,29 @@
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from slowapi.errors import RateLimitExceeded
 from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 
-from config.config import settings
 from app.limiter import limiter
-from features.users import api as users
+from config.config import settings
 from features.auth import api as auth
 from features.demo import api as demo
+from features.users import api as users
+from utils.error_handlers import register_error_handlers
 
 # Initialize the core FastAPI web application using settings from our config file
 app = FastAPI(
     title=settings.PROJECT_NAME,
     openapi_url=f"{settings.API_V1_STR}/openapi.json"
 )
+
+# Central error handling — every error path (raised HTTPExceptions,
+# FastAPI's own 404/405s, request-validation failures, unhandled
+# exceptions) resolves to the same {success:false,error:{code,message}}
+# envelope used on the success path. Must be registered before routes are
+# exercised, but registration order relative to `include_router` below
+# doesn't matter to FastAPI.
+register_error_handlers(app)
 
 # CORS (Frontend Interoperability)
 # This allows the React/Vite frontend (running on ports 5173 or 3000) 

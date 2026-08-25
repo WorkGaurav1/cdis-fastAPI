@@ -59,6 +59,22 @@ This command will automatically download the MySQL image, build the Python FastA
 docker compose up -d --build
 ```
 
+### Apply Migrations & Seed Data
+
+The `users` table is managed by Alembic, not created automatically on
+boot. After the containers are up, apply migrations and seed a few
+default accounts for local login (`admin@example.com` /
+`manager@example.com` / `user@example.com`, all with password
+`password`):
+
+```bash
+docker compose exec api alembic upgrade head
+docker compose exec api python -m scripts.seed
+```
+
+Both are safe to re-run (`alembic upgrade head` is a no-op once
+up to date; the seed script skips any email that already exists).
+
 ### Accessing the Server
 
 Once running, the interactive Swagger documentation is instantly available at:

@@ -18,6 +18,8 @@ COPY --from=builder /app/pyproject.toml .
 RUN pip install --no-cache /wheels/*
 
 COPY ./src /app/src
+COPY ./alembic /app/alembic
+COPY ./alembic.ini /app/alembic.ini
 
 ENV PYTHONPATH=/app/src
 

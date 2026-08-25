@@ -4,14 +4,20 @@
 # actually originated from our own frontend origin.
 
 import jwt
-from fastapi import Cookie, HTTPException, Request, status
+from fastapi import Cookie, Depends, HTTPException, Request, status
+from sqlmodel import Session
 
+from config.database import get_session
 from features.auth.cookies import CSRF_COOKIE, CSRF_HEADER
 from features.auth.security import decode_access_token
-from features.users.api import get_user_by_id
+from features.users.models import User
+from features.users.repository import get_user_by_id
 
 
-def get_current_user(access_token: str | None = Cookie(default=None)) -> dict:
+def get_current_user(
+    access_token: str | None = Cookie(default=None),
+    session: Session = Depends(get_session),
+) -> User:
     # This is authentication ("who is this request from") -- it does not
     # check what that user is allowed to do; permission checks build on
     # top of this once a real permission model exists (P0 step 10).
@@ -29,7 +35,18 @@ def get_current_user(access_token: str | None = Cookie(default=None)) -> dict:
             detail="Your session is invalid or has expired.",
         ) from None
 
-    user = get_user_by_id(payload.get("sub"))
+    # sub is always serialized as a string in a JWT (RFC 7519), but the
+    # real User table's id is an int -- a non-numeric sub is exactly as
+    # invalid as a bad signature.
+    try:
+        user_id = int(payload.get("sub"))
+    except (TypeError, ValueError):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Your session is invalid or has expired.",
+        ) from None
+
+    user = get_user_by_id(session, user_id)
     if user is None:
         # A token that verifies fine but no longer maps to a real user
         # (e.g. the user was deleted after the token was issued).

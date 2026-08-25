@@ -22,9 +22,15 @@ from features.auth.security import (
     generate_refresh_token_value,
     hash_refresh_token,
     refresh_token_expiry,
+    verify_password,
 )
 from features.users.models import User
-from features.users.repository import get_user_by_id
+from features.users.repository import (
+    get_user_by_email,
+    get_user_by_id,
+    record_failed_login,
+    reset_failed_logins,
+)
 from utils.time import utcnow
 
 
@@ -37,6 +43,45 @@ class TokenPair:
 
 def _unauthorized(message: str) -> HTTPException:
     return HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=message)
+
+
+_invalid_credentials = _unauthorized("Invalid username or password")
+
+
+def authenticate_user(session: Session, email: str, password: str) -> User:
+    """
+    Verifies credentials and enforces account lockout, mirroring
+    authService.login()'s exact ordering
+    (src/services/auth.service.ts): the lockout check runs *before*
+    password verification, so a correct password during an active
+    lockout window still fails with 403 -- not 401, and not a success.
+    """
+    user = get_user_by_email(session, email)
+
+    if not user:
+        raise _invalid_credentials
+
+    if user.locked_until is not None and user.locked_until > utcnow():
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=(
+                "This account is temporarily locked due to repeated failed "
+                "sign-in attempts. Please try again later."
+            ),
+        )
+
+    if not verify_password(password, user.hashed_password):
+        attempts = user.failed_login_attempts + 1
+        locked_until = (
+            utcnow() + timedelta(minutes=settings.LOCKOUT_DURATION_MINUTES)
+            if attempts >= settings.LOCKOUT_MAX_ATTEMPTS
+            else None
+        )
+        record_failed_login(session, user, attempts, locked_until)
+        raise _invalid_credentials
+
+    reset_failed_logins(session, user)
+    return user
 
 
 def issue_token_pair(

@@ -3,6 +3,8 @@
 # Callers pass in a Session (via the get_session dependency) rather than
 # this module owning one, so each request gets its own transaction scope.
 
+from datetime import datetime
+
 from sqlmodel import Session, select
 
 from features.users.models import User
@@ -28,3 +30,22 @@ def create_user(
     session.commit()
     session.refresh(user)
     return user
+
+
+def record_failed_login(
+    session: Session,
+    user: User,
+    failed_login_attempts: int,
+    locked_until: datetime | None,
+) -> None:
+    user.failed_login_attempts = failed_login_attempts
+    user.locked_until = locked_until
+    session.add(user)
+    session.commit()
+
+
+def reset_failed_logins(session: Session, user: User) -> None:
+    user.failed_login_attempts = 0
+    user.locked_until = None
+    session.add(user)
+    session.commit()

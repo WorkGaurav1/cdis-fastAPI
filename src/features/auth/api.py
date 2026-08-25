@@ -14,9 +14,10 @@ from features.auth.rbac_repository import (
     get_roles_and_permissions_for_user,
 )
 from features.auth.schemas import LoginRequest, RegisterRequest
-from features.auth.security import get_password_hash, verify_password
+from features.auth.security import get_password_hash
 from features.auth.service import (
     TokenPair,
+    authenticate_user,
     issue_token_pair,
     revoke_refresh_token,
     rotate_refresh_token,
@@ -27,11 +28,6 @@ from features.users.repository import create_user, get_user_by_email
 from utils.apiResponse import send_success
 
 router = APIRouter()
-
-invalid_credentials_exception = HTTPException(
-    status_code=status.HTTP_401_UNAUTHORIZED,
-    detail="Invalid username or password",
-)
 
 
 def _request_context(request: Request) -> dict:
@@ -103,10 +99,10 @@ def login(
     session: Session = Depends(get_session),
 ):
     # Authenticate a user and return a JWT token in HttpOnly cookies.
-    user = get_user_by_email(session, login_data.email)
-
-    if not user or not verify_password(login_data.password, user.hashed_password):
-        raise invalid_credentials_exception
+    # authenticate_user() enforces account lockout and raises 401/403
+    # itself (features/auth/service.py) -- see its docstring for the
+    # exact check ordering, mirrored from Node's authService.login().
+    user = authenticate_user(session, login_data.email, login_data.password)
 
     tokens = issue_token_pair(session, user, **_request_context(request))
     _set_cookies_from(response, tokens)

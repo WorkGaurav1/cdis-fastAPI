@@ -51,6 +51,11 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
+    # Account lockout (matches the Node backend's .env.example defaults:
+    # ACCOUNT_LOCKOUT_MAX_ATTEMPTS=5, ACCOUNT_LOCKOUT_DURATION_MINUTES=15).
+    LOCKOUT_MAX_ATTEMPTS: int = 5
+    LOCKOUT_DURATION_MINUTES: int = 15
+
     # Tell pydantic to read from a .env file if it exists, and ignore
     # extra variables it doesn't recognize.
     model_config = SettingsConfigDict(

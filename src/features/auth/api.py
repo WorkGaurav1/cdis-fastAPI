@@ -9,7 +9,7 @@ from app.limiter import limiter
 # Feature imports
 from config.config import settings
 from features.auth.cookies import clear_auth_cookies, set_auth_cookies
-from features.auth.dependencies import get_current_user
+from features.auth.dependencies import get_current_user, require_csrf_token
 from features.auth.schemas import LoginRequest
 from features.auth.security import (
     create_access_token,
@@ -65,8 +65,15 @@ def login(
 
     return send_success({"user": _to_safe_user(user)})
 
-@router.post("/logout")
-def logout(response: Response):
+@router.post("/logout", dependencies=[Depends(require_csrf_token)])
+def logout(response: Response, current_user: dict = Depends(get_current_user)):
+    # Mirrors Node's route wiring exactly: requireAuth then
+    # requireCsrfToken (src/routes/auth.routes.ts). current_user isn't
+    # used yet (no server-side revocation exists until P0 step 8 adds
+    # real refresh-token persistence) but the auth check itself matters:
+    # without it, logout would be reachable by anyone holding a valid
+    # CSRF cookie/header pair, logged in or not.
+    _ = current_user
     clear_auth_cookies(response)
     return send_success({"message": "Logged out successfully."})
 
@@ -78,7 +85,7 @@ def me(current_user: dict = Depends(get_current_user)):
     # tampered, or expired token.
     return send_success({"user": _to_safe_user(current_user)})
 
-@router.post("/refresh")
+@router.post("/refresh", dependencies=[Depends(require_csrf_token)])
 def refresh(request: Request, response: Response):
     # Verifies the refresh-token cookie's JWT the same way /me verifies
     # the access-token cookie, and returns the user it actually names.

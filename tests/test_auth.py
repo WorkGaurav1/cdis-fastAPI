@@ -1,14 +1,22 @@
 # Verifies /auth/me and /auth/refresh actually authenticate the caller
 # via a verified JWT, rather than trusting mere cookie presence and
 # always returning the hardcoded first user (the bug this replaces).
+#
+# /auth/refresh and /auth/logout also require a valid double-submit
+# CSRF header (see tests/test_csrf.py for the dedicated CSRF checks) --
+# tests below that exercise those two endpoints send a matching
+# X-CSRF-Token header so they can isolate the JWT/auth behavior they're
+# actually testing.
 
 from fastapi.testclient import TestClient
 
 from config.config import settings
+from features.auth.cookies import CSRF_HEADER
 
 LOGIN_URL = f"{settings.API_V1_STR}/auth/login"
 ME_URL = f"{settings.API_V1_STR}/auth/me"
 REFRESH_URL = f"{settings.API_V1_STR}/auth/refresh"
+LOGOUT_URL = f"{settings.API_V1_STR}/auth/logout"
 
 # All three fake_users_db entries share this password (see
 # features/users/api.py's fake_hashed_password comment).
@@ -27,6 +35,7 @@ def _login_and_get_tokens(client: TestClient, email: str) -> dict:
     return {
         "access_token": response.cookies["access_token"],
         "refresh_token": response.cookies["refresh_token"],
+        "csrf_token": response.cookies["csrf_token"],
     }
 
 
@@ -61,7 +70,7 @@ def test_refresh_returns_the_actual_logged_in_user_not_always_admin(client: Test
     tokens = _login_and_get_tokens(client, "user@example.com")
     client.cookies.set("refresh_token", tokens["refresh_token"])
 
-    response = client.post(REFRESH_URL)
+    response = client.post(REFRESH_URL, headers={CSRF_HEADER: tokens["csrf_token"]})
 
     assert response.status_code == 200
     assert response.json()["data"]["user"]["email"] == "user@example.com"
@@ -87,16 +96,28 @@ def test_me_with_tampered_cookie_is_401(client: TestClient):
 
 
 def test_refresh_without_cookie_is_401(client: TestClient):
+    # Valid CSRF pair but no refresh_token cookie -- isolates the
+    # "no refresh token" 401 from the CSRF check (which runs first, and
+    # has its own dedicated tests in tests/test_csrf.py).
+    tokens = _login_and_get_tokens(client, "admin@example.com")
     client.cookies.clear()
-    response = client.post(REFRESH_URL)
+    client.cookies.set("csrf_token", tokens["csrf_token"])
+
+    response = client.post(REFRESH_URL, headers={CSRF_HEADER: tokens["csrf_token"]})
+
     assert response.status_code == 401
     assert response.json()["error"]["message"] == "Authentication is required."
+    client.cookies.clear()
 
 
 def test_refresh_with_tampered_cookie_is_401(client: TestClient):
+    tokens = _login_and_get_tokens(client, "admin@example.com")
     client.cookies.clear()
     client.cookies.set("refresh_token", "not-a-real-jwt")
-    response = client.post(REFRESH_URL)
+    client.cookies.set("csrf_token", tokens["csrf_token"])
+
+    response = client.post(REFRESH_URL, headers={CSRF_HEADER: tokens["csrf_token"]})
+
     assert response.status_code == 401
     assert (
         response.json()["error"]["message"] == "Your session is invalid or has expired."
@@ -113,9 +134,9 @@ def test_safe_user_never_leaks_hashed_password(client: TestClient):
 
 
 def test_logout_clears_all_three_auth_cookies(client: TestClient):
-    _login_and_get_tokens(client, "admin@example.com")
+    tokens = _login_and_get_tokens(client, "admin@example.com")
 
-    response = client.post(f"{settings.API_V1_STR}/auth/logout")
+    response = client.post(LOGOUT_URL, headers={CSRF_HEADER: tokens["csrf_token"]})
 
     assert response.status_code == 200
     set_cookie_headers = response.headers.get_list("set-cookie")
@@ -123,4 +144,18 @@ def test_logout_clears_all_three_auth_cookies(client: TestClient):
     assert cleared_names == {"access_token", "refresh_token", "csrf_token"}
     for header in set_cookie_headers:
         assert "Max-Age=0" in header or "01 Jan 1970" in header
+    client.cookies.clear()
+
+
+def test_logout_without_auth_is_401(client: TestClient):
+    # Node's route wiring is requireAuth then requireCsrfToken -- without
+    # a valid access_token, logout must 401 even with a fully valid CSRF
+    # pair, matching the equivalent check on /auth/me.
+    tokens = _login_and_get_tokens(client, "admin@example.com")
+    client.cookies.clear()
+    client.cookies.set("csrf_token", tokens["csrf_token"])
+
+    response = client.post(LOGOUT_URL, headers={CSRF_HEADER: tokens["csrf_token"]})
+
+    assert response.status_code == 401
     client.cookies.clear()

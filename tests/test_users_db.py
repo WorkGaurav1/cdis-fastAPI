@@ -19,7 +19,12 @@ def test_users_endpoint_returns_the_seeded_db_rows_not_a_fake_list(
 
     assert response.status_code == 200
     emails = {u["email"] for u in response.json()["data"]["users"]}
-    assert emails == default_user_emails
+    # >= rather than == : other tests in this session-scoped DB (e.g.
+    # tests/test_register.py) legitimately add more rows over the
+    # course of the suite -- what this test is actually verifying is
+    # that the seeded rows are present and real, not that these three
+    # are the *only* rows that will ever exist.
+    assert emails >= default_user_emails
 
 
 def test_users_endpoint_never_leaks_hashed_password(client: TestClient):

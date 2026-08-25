@@ -14,17 +14,8 @@ class UserBase(SQLModel):
     is_superuser: bool = False
     full_name: Optional[str] = None
 
-class UserCreate(UserBase):
-    """
-    The schema used when a client wants to create a new user via a POST request.
-    It requires a raw password, which will be hashed before hitting the database.
-    """
-    password: str
-
-class UserResponse(UserBase):
-    """
-    The schema used to send user data back to the client.
-    Crucially, it includes the 'id' but DOES NOT include the 'password' or 'hashed_password'.
-    FastAPI will automatically strip those out for security.
-    """
-    id: int
+# NOTE: there used to be UserCreate/UserResponse schemas here, for a
+# POST /api/v1/users/ endpoint that was never actually wired up on the
+# router (see tests/test_users.py's removed test_create_user). User
+# creation is POST /auth/register (features/auth/schemas.py's
+# RegisterRequest); removed rather than keeping unused dead code around.

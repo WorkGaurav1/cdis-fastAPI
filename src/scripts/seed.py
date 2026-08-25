@@ -1,13 +1,16 @@
 """
-Seeds baseline roles/permissions plus the default users, mirroring
-prisma/seed.ts's approach: idempotent (safe to run more than once --
-upserts roles/permissions, skips a user email that already exists,
-and re-checks role assignment even for pre-existing users) rather than
-assuming an empty DB.
+Seeds baseline roles/permissions, the default users, and demo/showcase
+data (map/chart/table gallery), mirroring prisma/seed.ts's approach:
+idempotent (safe to run more than once) -- upserts roles/permissions
+and demo datasets, skips a user email that already exists, re-checks
+role assignment even for pre-existing users, and replaces demo chart
+points/table rows wholesale rather than assuming an empty DB.
 
 Run with (after `alembic upgrade head`):
     PYTHONPATH=src python -m scripts.seed
 """
+
+import random
 
 from sqlmodel import Session
 
@@ -19,6 +22,19 @@ from features.auth.rbac_repository import (
     get_or_create_role,
 )
 from features.auth.security import get_password_hash
+from features.demo.repository import (
+    replace_chart_points,
+    replace_table_rows,
+    upsert_chart_dataset,
+    upsert_state_metric,
+    upsert_table_dataset,
+)
+from features.demo.seed_data import (
+    DEMO_STATES,
+    build_chart_datasets,
+    build_table_datasets,
+    random_project_count,
+)
 from features.users.repository import create_user, get_user_by_email
 
 # Mirrors prisma/seed.ts's PERMISSIONS/ROLES exactly.
@@ -82,10 +98,41 @@ def _seed_users(session: Session) -> None:
         ensure_user_has_role(session, user.id, role.id)
 
 
+def _seed_demo_data(session: Session) -> None:
+    for state_name, state_code in DEMO_STATES:
+        upsert_state_metric(
+            session,
+            state_code=state_code,
+            state_name=state_name,
+            project_count=random_project_count(),
+            activity_intensity=random.randint(0, 100),
+        )
+
+    for dataset in build_chart_datasets():
+        record = upsert_chart_dataset(
+            session,
+            slug=dataset["slug"],
+            title=dataset["title"],
+            chart_type=dataset["chart_type"],
+            description=dataset["description"],
+        )
+        replace_chart_points(session, record.id, dataset["points"])
+
+    for dataset in build_table_datasets():
+        record = upsert_table_dataset(
+            session,
+            slug=dataset["slug"],
+            title=dataset["title"],
+            description=dataset["description"],
+        )
+        replace_table_rows(session, record.id, dataset["rows"])
+
+
 def seed() -> None:
     with Session(engine) as session:
         _seed_roles_and_permissions(session)
         _seed_users(session)
+        _seed_demo_data(session)
 
 
 if __name__ == "__main__":

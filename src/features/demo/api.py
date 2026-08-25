@@ -1,30 +1,65 @@
 from fastapi import APIRouter, Depends
+from sqlmodel import Session
 
+from config.database import get_session
 from features.auth.dependencies import get_current_user
+from features.demo.mapper import (
+    to_chart_dataset_response,
+    to_state_metric_response,
+    to_table_dataset_response,
+)
+from features.demo.repository import (
+    list_chart_datasets,
+    list_chart_points,
+    list_state_metrics,
+    list_table_datasets,
+    list_table_rows,
+)
 from features.users.models import User
 from utils.apiResponse import send_success
 
 router = APIRouter()
 
-# Dummy state data for the India map
-fake_states_db = [
-    { "id": "1", "stateCode": "27", "stateName": "Maharashtra", "projectCount": 120, "activityIntensity": 0.8 },
-    { "id": "2", "stateCode": "29", "stateName": "Karnataka", "projectCount": 95, "activityIntensity": 0.7 },
-    { "id": "3", "stateCode": "07", "stateName": "Delhi", "projectCount": 150, "activityIntensity": 0.9 },
-    { "id": "4", "stateCode": "24", "stateName": "Gujarat", "projectCount": 60, "activityIntensity": 0.5 },
-    { "id": "5", "stateCode": "33", "stateName": "Tamil Nadu", "projectCount": 110, "activityIntensity": 0.75 },
-    { "id": "6", "stateCode": "09", "stateName": "Uttar Pradesh", "projectCount": 45, "activityIntensity": 0.3 }
-]
+# Read-only demo/showcase data for the template's map, chart, and table
+# gallery pages. Gated behind authentication only (no specific
+# permission) -- matching src/routes/demo.routes.ts exactly, which
+# guards all three routes with requireAuth alone.
+
 
 @router.get("/map/states")
-def get_map_states(current_user: User = Depends(get_current_user)):
-    # Returns dummy statistics for state boundaries.
-    #
-    # NOTE: Node guards this with requireAuth only -- no specific
-    # permission, open to any signed-in user -- so a plain auth
-    # dependency is the full parity target here, unlike /users (P0 step 10).
-    # The data itself (6 hardcoded states, activityIntensity as a 0-1
-    # float rather than Node's 0-100 int across all 36 states/UTs) is a
-    # separate, already-tracked gap (P1 step 13).
+def get_map_states(
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
     _ = current_user
-    return send_success({"states": fake_states_db})
+    metrics = list_state_metrics(session)
+    return send_success({"states": [to_state_metric_response(m) for m in metrics]})
+
+
+@router.get("/charts")
+def get_charts(
+    type: str | None = None,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    _ = current_user
+    datasets = list_chart_datasets(session, chart_type=type)
+    result = [
+        to_chart_dataset_response(dataset, list_chart_points(session, dataset.id))
+        for dataset in datasets
+    ]
+    return send_success({"datasets": result})
+
+
+@router.get("/tables")
+def get_tables(
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    _ = current_user
+    datasets = list_table_datasets(session)
+    result = [
+        to_table_dataset_response(dataset, list_table_rows(session, dataset.id))
+        for dataset in datasets
+    ]
+    return send_success({"datasets": result})

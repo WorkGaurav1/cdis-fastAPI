@@ -7,6 +7,7 @@ from app.limiter import limiter
 from app.main import app
 from config.database import get_session
 from scripts.seed import DEFAULT_USERS
+from scripts.seed import _seed_demo_data as seed_demo_data
 from scripts.seed import _seed_roles_and_permissions as seed_roles_and_permissions
 from scripts.seed import _seed_users as seed_users
 
@@ -47,6 +48,7 @@ def _test_database():
     with Session(test_engine) as session:
         seed_roles_and_permissions(session)
         seed_users(session)
+        seed_demo_data(session)
     yield
     SQLModel.metadata.drop_all(test_engine)
 

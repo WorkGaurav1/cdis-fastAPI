@@ -56,6 +56,22 @@ class Settings(BaseSettings):
     LOCKOUT_MAX_ATTEMPTS: int = 5
     LOCKOUT_DURATION_MINUTES: int = 15
 
+    # Comma-separated list of origins allowed to make cross-origin
+    # requests with credentials (app/main.py's CORSMiddleware). Node's
+    # equivalent (CORS_ORIGIN, src/config/env.ts) is a single required
+    # value; this defaults to the same set of local dev origins main.py
+    # used to hardcode, so local dev keeps working without any env var,
+    # while every other environment can override it via CORS_ORIGINS.
+    CORS_ORIGINS: str = (
+        "http://localhost:3000,http://localhost:5173,http://localhost:3001"
+    )
+
+    @property
+    def cors_origins_list(self) -> list[str]:
+        return [
+            origin.strip() for origin in self.CORS_ORIGINS.split(",") if origin.strip()
+        ]
+
     # Tell pydantic to read from a .env file if it exists, and ignore
     # extra variables it doesn't recognize.
     model_config = SettingsConfigDict(

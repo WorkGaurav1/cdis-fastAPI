@@ -27,15 +27,13 @@ app = FastAPI(
 register_error_handlers(app)
 
 # CORS (Frontend Interoperability)
-# This allows the React/Vite frontend (running on ports 5173 or 3000) 
-# to securely communicate with this FastAPI backend.
+# Origin(s) come from settings.CORS_ORIGINS (config/config.py) --
+# configurable per environment via the CORS_ORIGINS env var, rather than
+# hardcoded here. credentials=True since authentication uses HttpOnly
+# cookies, mirroring the Node backend's src/app.ts.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://localhost:5173",
-        "http://localhost:3001",
-    ],
+    allow_origins=settings.cors_origins_list,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

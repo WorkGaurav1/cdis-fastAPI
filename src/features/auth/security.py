@@ -30,3 +30,17 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None) -> s
     # Sign the JWT using our secure secret key
     encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
     return encoded_jwt
+
+def decode_access_token(token: str) -> dict:
+    """
+    Verify a JWT's signature and expiry, and return its decoded payload.
+
+    Raises jwt.PyJWTError (e.g. ExpiredSignatureError, InvalidSignatureError,
+    DecodeError) if the token is tampered, malformed, or expired -- callers
+    are expected to catch jwt.PyJWTError and turn it into a 401, mirroring
+    the Node backend's requireAuth middleware (src/middlewares/requireAuth.ts).
+    The algorithm allow-list is pinned to settings.ALGORITHM, the same
+    algorithm we sign with, so a token claiming a different algorithm
+    (e.g. "none") is rejected rather than trusted.
+    """
+    return jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])

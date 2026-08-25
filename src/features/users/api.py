@@ -41,6 +41,19 @@ fake_users_db = [
     }
 ]
 
+def get_user_by_email(email: str) -> dict | None:
+    # Look up a fake_users_db entry by email (case-sensitive, matching
+    # the exact-match lookup login already did before this was factored
+    # out). Returns None if no such user exists.
+    return next((u for u in fake_users_db if u.get("email") == email), None)
+
+
+def get_user_by_id(user_id: str) -> dict | None:
+    # Look up a fake_users_db entry by id -- used to resolve the "sub"
+    # claim of a verified access-token JWT back to a user.
+    return next((u for u in fake_users_db if u.get("id") == user_id), None)
+
+
 @router.get("")
 def read_users(skip: int = 0, limit: int = 100):
     # Retrieve a list of all users.

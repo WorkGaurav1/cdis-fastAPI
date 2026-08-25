@@ -1,6 +1,3 @@
-from datetime import timedelta
-
-import jwt
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlmodel import Session
 
@@ -8,20 +5,20 @@ from sqlmodel import Session
 from app.limiter import limiter
 
 # Feature imports
-from config.config import settings
 from config.database import get_session
 from features.auth.cookies import clear_auth_cookies, set_auth_cookies
 from features.auth.dependencies import get_current_user, require_csrf_token
 from features.auth.schemas import LoginRequest, RegisterRequest
-from features.auth.security import (
-    create_access_token,
-    decode_access_token,
-    get_password_hash,
-    verify_password,
+from features.auth.security import get_password_hash, verify_password
+from features.auth.service import (
+    TokenPair,
+    issue_token_pair,
+    revoke_refresh_token,
+    rotate_refresh_token,
 )
 from features.users.mapper import to_safe_user
 from features.users.models import User
-from features.users.repository import create_user, get_user_by_email, get_user_by_id
+from features.users.repository import create_user, get_user_by_email
 from utils.apiResponse import send_success
 
 router = APIRouter()
@@ -32,25 +29,25 @@ invalid_credentials_exception = HTTPException(
 )
 
 
-def _issue_tokens_and_set_cookies(response: Response, user: User) -> None:
-    # sub = the user's stable id, mirroring the Node backend's access
-    # tokens (src/services/token.service.ts: `{ sub: userId }`) -- not
-    # email, so a later email change doesn't invalidate outstanding
-    # tokens and lookups don't depend on email casing/uniqueness. JWTs
-    # serialize sub as a string (RFC 7519) even though the DB id is an int.
-    access_token = create_access_token(
-        data={"sub": str(user.id)},
-        expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
-    )
+def _request_context(request: Request) -> dict:
+    return {
+        "ip": request.client.host if request.client else None,
+        "user_agent": request.headers.get("user-agent"),
+    }
+
+
+def _set_cookies_from(response: Response, tokens: TokenPair) -> None:
     # access_token/refresh_token/csrf_token, flags, paths, and lifetimes
     # all mirror the Node backend's src/lib/cookies.ts exactly (see
-    # features/auth/cookies.py). refresh_token is still literally the
-    # same JWT as access_token for now -- see refresh()'s docstring.
-    set_auth_cookies(response, access_token=access_token, refresh_token=access_token)
+    # features/auth/cookies.py).
+    set_auth_cookies(
+        response, access_token=tokens.access_token, refresh_token=tokens.refresh_token
+    )
 
 
 @router.post("/register", status_code=status.HTTP_201_CREATED)
 def register(
+    request: Request,
     response: Response,
     register_data: RegisterRequest,
     session: Session = Depends(get_session),
@@ -73,7 +70,8 @@ def register(
         hashed_password=get_password_hash(register_data.password),
     )
 
-    _issue_tokens_and_set_cookies(response, user)
+    tokens = issue_token_pair(session, user, **_request_context(request))
+    _set_cookies_from(response, tokens)
 
     return send_success({"user": to_safe_user(user)})
 
@@ -92,26 +90,34 @@ def login(
     if not user or not verify_password(login_data.password, user.hashed_password):
         raise invalid_credentials_exception
 
-    _issue_tokens_and_set_cookies(response, user)
+    tokens = issue_token_pair(session, user, **_request_context(request))
+    _set_cookies_from(response, tokens)
 
     return send_success({"user": to_safe_user(user)})
 
 
 @router.post("/logout", dependencies=[Depends(require_csrf_token)])
-def logout(response: Response, current_user=Depends(get_current_user)):
+def logout(
+    request: Request,
+    response: Response,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
     # Mirrors Node's route wiring exactly: requireAuth then
-    # requireCsrfToken (src/routes/auth.routes.ts). current_user isn't
-    # used yet (no server-side revocation exists until P0 step 8 adds
-    # real refresh-token persistence) but the auth check itself matters:
-    # without it, logout would be reachable by anyone holding a valid
-    # CSRF cookie/header pair, logged in or not.
+    # requireCsrfToken (src/routes/auth.routes.ts), then revokes the
+    # refresh token server-side so a copy of it (e.g. stolen from
+    # storage) can't be used at /auth/refresh after this point.
     _ = current_user
+    raw_refresh_token = request.cookies.get("refresh_token")
+    if raw_refresh_token:
+        revoke_refresh_token(session, raw_refresh_token)
+
     clear_auth_cookies(response)
     return send_success({"message": "Logged out successfully."})
 
 
 @router.get("/me")
-def me(current_user=Depends(get_current_user)):
+def me(current_user: User = Depends(get_current_user)):
     # Returns the user the verified access-token JWT actually names --
     # not a hardcoded stand-in. get_current_user (see
     # features/auth/dependencies.py) already raises 401 for a missing,
@@ -123,43 +129,21 @@ def me(current_user=Depends(get_current_user)):
 def refresh(
     request: Request, response: Response, session: Session = Depends(get_session)
 ):
-    # Verifies the refresh-token cookie's JWT the same way /me verifies
-    # the access-token cookie, and returns the user it actually names.
-    #
-    # NOTE: this is still not a real refresh -- refresh_token is set to
-    # the exact same JWT as access_token at login (see login() above), so
-    # this only proves the *original* access token hasn't expired; no
-    # distinct refresh token, rotation, or reuse detection exists yet.
-    # That's tracked separately (P0 step 8 of the gap-analysis priority
-    # list / docs/parity-notes.md) and requires real persistence.
-    refresh_token = request.cookies.get("refresh_token")
-    if not refresh_token:
+    raw_refresh_token = request.cookies.get("refresh_token")
+    if not raw_refresh_token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Authentication is required.",
         )
 
-    try:
-        payload = decode_access_token(refresh_token)
-    except jwt.PyJWTError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Your session is invalid or has expired.",
-        ) from None
+    # Verifies, rotates, and (on reuse of an already-rotated token)
+    # revokes the whole session chain -- see
+    # features/auth/service.py::rotate_refresh_token for the full flow.
+    # Raises HTTPException(401) itself on any failure.
+    user, tokens = rotate_refresh_token(
+        session, raw_refresh_token, **_request_context(request)
+    )
 
-    try:
-        user_id = int(payload.get("sub"))
-    except (TypeError, ValueError):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Your session is invalid or has expired.",
-        ) from None
-
-    user = get_user_by_id(session, user_id)
-    if user is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Your session is invalid or has expired.",
-        )
+    _set_cookies_from(response, tokens)
 
     return send_success({"user": to_safe_user(user)})

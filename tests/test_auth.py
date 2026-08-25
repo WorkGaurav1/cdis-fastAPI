@@ -110,17 +110,22 @@ def test_refresh_without_cookie_is_401(client: TestClient):
     client.cookies.clear()
 
 
-def test_refresh_with_tampered_cookie_is_401(client: TestClient):
+def test_refresh_with_unknown_token_is_401(client: TestClient):
+    # Refresh tokens are opaque, DB-backed values now (not JWTs) -- see
+    # tests/test_refresh_rotation.py for the full rotation/reuse-
+    # detection lifecycle. This just proves a value that was never
+    # actually issued is rejected the same way Node's authService.refresh
+    # rejects a token with no matching tokenHash row.
     tokens = _login_and_get_tokens(client, "admin@example.com")
     client.cookies.clear()
-    client.cookies.set("refresh_token", "not-a-real-jwt")
+    client.cookies.set("refresh_token", "never-issued-by-this-server")
     client.cookies.set("csrf_token", tokens["csrf_token"])
 
     response = client.post(REFRESH_URL, headers={CSRF_HEADER: tokens["csrf_token"]})
 
     assert response.status_code == 401
     assert (
-        response.json()["error"]["message"] == "Your session is invalid or has expired."
+        response.json()["error"]["message"] == "Invalid session. Please sign in again."
     )
     client.cookies.clear()
 

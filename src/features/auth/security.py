@@ -1,7 +1,12 @@
-import jwt
+import hashlib
+import secrets
 from datetime import datetime, timedelta, timezone
+
 import bcrypt
+import jwt
+
 from config.config import settings
+
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     # Verify a plain password against a hashed password.
@@ -44,3 +49,24 @@ def decode_access_token(token: str) -> dict:
     (e.g. "none") is rejected rather than trusted.
     """
     return jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+
+
+def generate_refresh_token_value() -> str:
+    """Raw refresh token value -- sent to the client, never stored as-is."""
+    return secrets.token_hex(32)
+
+
+def hash_refresh_token(raw_token: str) -> str:
+    """
+    SHA-256, not bcrypt: this hashes a 256-bit random value, not a
+    low-entropy password, so there's no brute-force risk to slow down --
+    a fast, deterministic hash is the correct tool for a lookup key.
+    Mirrors src/services/token.service.ts's hashRefreshToken exactly.
+    """
+    return hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
+
+
+def refresh_token_expiry() -> datetime:
+    # Naive but UTC-by-convention -- see models.py's _utcnow() for why.
+    delta = timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+    return (datetime.now(timezone.utc) + delta).replace(tzinfo=None)

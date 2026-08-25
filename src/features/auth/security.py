@@ -6,6 +6,7 @@ import bcrypt
 import jwt
 
 from config.config import settings
+from utils.time import utcnow
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -67,6 +68,4 @@ def hash_refresh_token(raw_token: str) -> str:
 
 
 def refresh_token_expiry() -> datetime:
-    # Naive but UTC-by-convention -- see models.py's _utcnow() for why.
-    delta = timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
-    return (datetime.now(timezone.utc) + delta).replace(tzinfo=None)
+    return utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)

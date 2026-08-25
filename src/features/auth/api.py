@@ -8,6 +8,11 @@ from app.limiter import limiter
 from config.database import get_session
 from features.auth.cookies import clear_auth_cookies, set_auth_cookies
 from features.auth.dependencies import get_current_user, require_csrf_token
+from features.auth.rbac_repository import (
+    ensure_user_has_role,
+    get_role_by_name,
+    get_roles_and_permissions_for_user,
+)
 from features.auth.schemas import LoginRequest, RegisterRequest
 from features.auth.security import get_password_hash, verify_password
 from features.auth.service import (
@@ -45,6 +50,11 @@ def _set_cookies_from(response: Response, tokens: TokenPair) -> None:
     )
 
 
+def _safe_user_payload(session: Session, user: User) -> dict:
+    roles, permissions = get_roles_and_permissions_for_user(session, user.id)
+    return to_safe_user(user, roles, permissions)
+
+
 @router.post("/register", status_code=status.HTTP_201_CREATED)
 def register(
     request: Request,
@@ -52,11 +62,6 @@ def register(
     register_data: RegisterRequest,
     session: Session = Depends(get_session),
 ):
-    # NOTE: Node also assigns the default "user" role here
-    # (roleRepository.findByName("user") + userRepository.assignRole).
-    # No role/permission tables exist yet -- that's P0 step 10 -- so a
-    # freshly registered user has no roles until then, same as every
-    # other user in to_safe_user()'s current [] placeholder.
     if get_user_by_email(session, register_data.email) is not None:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -70,10 +75,23 @@ def register(
         hashed_password=get_password_hash(register_data.password),
     )
 
+    # Mirrors Node's register() assigning the default "user" role
+    # (roleRepository.findByName("user") + userRepository.assignRole).
+    # A missing default role is a deployment/seed problem, not something
+    # the client did wrong -- same as Node's raw `throw new Error(...)`
+    # here, it surfaces as a generic 500 (via the global exception
+    # handler) rather than a client-facing 4xx.
+    default_role = get_role_by_name(session, "user")
+    if default_role is None:
+        raise RuntimeError(
+            "Default role 'user' is missing. Run `python -m scripts.seed`."
+        )
+    ensure_user_has_role(session, user.id, default_role.id)
+
     tokens = issue_token_pair(session, user, **_request_context(request))
     _set_cookies_from(response, tokens)
 
-    return send_success({"user": to_safe_user(user)})
+    return send_success({"user": _safe_user_payload(session, user)})
 
 
 @router.post("/login")
@@ -93,7 +111,7 @@ def login(
     tokens = issue_token_pair(session, user, **_request_context(request))
     _set_cookies_from(response, tokens)
 
-    return send_success({"user": to_safe_user(user)})
+    return send_success({"user": _safe_user_payload(session, user)})
 
 
 @router.post("/logout", dependencies=[Depends(require_csrf_token)])
@@ -117,12 +135,15 @@ def logout(
 
 
 @router.get("/me")
-def me(current_user: User = Depends(get_current_user)):
+def me(
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
     # Returns the user the verified access-token JWT actually names --
     # not a hardcoded stand-in. get_current_user (see
     # features/auth/dependencies.py) already raises 401 for a missing,
     # tampered, or expired token.
-    return send_success({"user": to_safe_user(current_user)})
+    return send_success({"user": _safe_user_payload(session, current_user)})
 
 
 @router.post("/refresh", dependencies=[Depends(require_csrf_token)])
@@ -146,4 +167,4 @@ def refresh(
 
     _set_cookies_from(response, tokens)
 
-    return send_success({"user": to_safe_user(user)})
+    return send_success({"user": _safe_user_payload(session, user)})

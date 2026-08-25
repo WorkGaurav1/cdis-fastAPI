@@ -6,8 +6,9 @@ from sqlmodel import Session, SQLModel, create_engine
 from app.limiter import limiter
 from app.main import app
 from config.database import get_session
-from features.auth.security import get_password_hash
-from features.users.repository import create_user
+from scripts.seed import DEFAULT_USERS
+from scripts.seed import _seed_roles_and_permissions as seed_roles_and_permissions
+from scripts.seed import _seed_users as seed_users
 
 # In-memory SQLite for the whole test session -- a real engine/session,
 # exercising the same repository code the running app uses, without
@@ -34,28 +35,18 @@ def _override_get_session():
 
 app.dependency_overrides[get_session] = _override_get_session
 
-# Same three users/password the old fake_users_db stub had, so every
-# existing test that logs in as admin@example.com / manager@example.com
-# / user@example.com with password "password" keeps working unchanged.
-DEFAULT_PASSWORD = "password"
-DEFAULT_USERS = [
-    {"email": "admin@example.com", "full_name": "Super Admin"},
-    {"email": "manager@example.com", "full_name": "Project Manager"},
-    {"email": "user@example.com", "full_name": "Standard User"},
-]
-
 
 @pytest.fixture(scope="session", autouse=True)
 def _test_database():
+    # Reuses the exact same seed logic (roles/permissions/default users,
+    # scripts/seed.py) the real app is seeded with -- so tests never
+    # drift from what a real deployment actually has, and admin/manager/
+    # user's role-gated behavior (e.g. GET /users needing users:read) is
+    # real, not a test-only fixture guess.
     SQLModel.metadata.create_all(test_engine)
     with Session(test_engine) as session:
-        for entry in DEFAULT_USERS:
-            create_user(
-                session,
-                email=entry["email"],
-                full_name=entry["full_name"],
-                hashed_password=get_password_hash(DEFAULT_PASSWORD),
-            )
+        seed_roles_and_permissions(session)
+        seed_users(session)
     yield
     SQLModel.metadata.drop_all(test_engine)
 

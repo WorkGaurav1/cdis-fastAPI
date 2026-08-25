@@ -17,6 +17,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 # actually has their tables registered before autogenerate runs.
 from config.config import settings  # noqa: E402
 from features.auth import models as auth_models  # noqa: E402, F401
+from features.auth import rbac_models  # noqa: E402, F401
 from features.users import models as users_models  # noqa: E402, F401
 
 # this is the Alembic Config object, which provides

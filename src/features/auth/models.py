@@ -1,18 +1,11 @@
 # Auth-specific database models.
 
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Optional
 
 from sqlmodel import Field, SQLModel
 
-
-def _utcnow() -> datetime:
-    # Naive but UTC-by-convention: MySQL's DATETIME column has no
-    # timezone concept, so a tz-aware value round-trips through the DB
-    # as naive anyway -- storing (and later comparing) naive UTC
-    # consistently avoids Python raising on
-    # aware-vs-naive datetime comparisons once a value comes back out.
-    return datetime.now(timezone.utc).replace(tzinfo=None)
+from utils.time import utcnow
 
 
 class RefreshToken(SQLModel, table=True):
@@ -50,4 +43,4 @@ class RefreshToken(SQLModel, table=True):
     created_by_ip: Optional[str] = Field(default=None, max_length=64)
     user_agent: Optional[str] = Field(default=None, max_length=255)
 
-    created_at: datetime = Field(default_factory=_utcnow)
+    created_at: datetime = Field(default_factory=utcnow)

@@ -3,16 +3,12 @@
 # rotation-chain bookkeeping (replaced_by_token_id) used to detect reuse
 # of an already-rotated token.
 
-from datetime import datetime, timezone
+from datetime import datetime
 
 from sqlmodel import Session, select
 
 from features.auth.models import RefreshToken
-
-
-def _utcnow() -> datetime:
-    # Naive but UTC-by-convention -- see models.py's _utcnow() for why.
-    return datetime.now(timezone.utc).replace(tzinfo=None)
+from utils.time import utcnow
 
 
 def create_refresh_token(
@@ -47,14 +43,14 @@ def mark_rotated(
     session: Session, token: RefreshToken, replaced_by_token_id: int
 ) -> None:
     """Marks `token` as revoked and links it to the token that replaced it."""
-    token.revoked_at = _utcnow()
+    token.revoked_at = utcnow()
     token.replaced_by_token_id = replaced_by_token_id
     session.add(token)
     session.commit()
 
 
 def revoke(session: Session, token: RefreshToken) -> None:
-    token.revoked_at = _utcnow()
+    token.revoked_at = utcnow()
     session.add(token)
     session.commit()
 
@@ -70,7 +66,7 @@ def revoke_all_for_user(session: Session, user_id: int) -> None:
             RefreshToken.user_id == user_id, RefreshToken.revoked_at.is_(None)
         )
     ).all()
-    now = _utcnow()
+    now = utcnow()
     for token in active_tokens:
         token.revoked_at = now
         session.add(token)

@@ -80,12 +80,10 @@ def test_to_safe_user_strips_hashed_password_and_maps_full_name_to_name(
 ):
     user = get_user_by_email(db_session, "admin@example.com")
 
-    safe = to_safe_user(user)
+    safe = to_safe_user(user, roles=["admin"], permissions=["users:read"])
 
     assert "hashed_password" not in safe
     assert safe["name"] == user.full_name
     assert safe["email"] == "admin@example.com"
-    # Honest placeholders until P0 step 10 (RBAC tables) lands -- not
-    # fabricated authorization data.
-    assert safe["roles"] == []
-    assert safe["permissions"] == []
+    assert safe["roles"] == ["admin"]
+    assert safe["permissions"] == ["users:read"]

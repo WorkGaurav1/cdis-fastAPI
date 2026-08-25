@@ -4,7 +4,7 @@
 # the HTTP layer (api.py) only deals with request/response/cookies.
 
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import timedelta
 
 from fastapi import HTTPException, status
 from sqlmodel import Session
@@ -25,6 +25,7 @@ from features.auth.security import (
 )
 from features.users.models import User
 from features.users.repository import get_user_by_id
+from utils.time import utcnow
 
 
 @dataclass
@@ -93,7 +94,7 @@ def rotate_refresh_token(
         revoke_all_for_user(session, existing.user_id)
         raise _unauthorized("This session is no longer valid. Please sign in again.")
 
-    if existing.expires_at < datetime.now(timezone.utc).replace(tzinfo=None):
+    if existing.expires_at < utcnow():
         raise _unauthorized("Your session has expired. Please sign in again.")
 
     user = get_user_by_id(session, existing.user_id)

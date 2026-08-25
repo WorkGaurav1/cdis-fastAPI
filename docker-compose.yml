@@ -22,6 +22,11 @@ services:
       - ./src:/app/src
     environment:
       - DATABASE_URL=mysql+pymysql://user:password@db/dbname
+      # Local-compose-only value so `docker-compose up` keeps working out
+      # of the box. SECRET_KEY has no built-in default (see
+      # src/config/config.py) — every real deployment must set its own
+      # unique, securely-random value instead of this one.
+      - SECRET_KEY=local-docker-compose-dev-secret-do-not-use-elsewhere
     depends_on:
       - db
     command: uvicorn src.app.main:app --host 0.0.0.0 --port 8000 --reload

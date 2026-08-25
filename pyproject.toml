@@ -22,6 +22,7 @@ dev = [
     "pytest>=7.4.0",
     "httpx>=0.24.0",
     "ruff>=0.1.0",
+    "pytest-env>=1.0.0",
 ]
 
 [tool.ruff]
@@ -37,6 +38,15 @@ minversion = "7.0"
 addopts = "-v --tb=short"
 testpaths = ["tests"]
 pythonpath = ["src"]
+
+# Required Settings fields (DATABASE_URL, SECRET_KEY — see
+# src/config/config.py) have no built-in default, so the test suite must
+# supply its own values, the same way the Node backend's
+# vitest.config.ts does for its equivalent required env vars. These are
+# test-only and never used outside the suite.
+[tool.pytest_env]
+DATABASE_URL = "mysql+pymysql://test:test@localhost/test_unused"
+SECRET_KEY = "test-only-secret-never-used-outside-the-test-suite"
 
 [tool.pyright]
 # Tells Pyright to treat the "src" folder as a root for imports

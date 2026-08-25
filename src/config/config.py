@@ -1,5 +1,7 @@
 # Application Configuration Module.
 
+from typing import Literal
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -8,6 +10,13 @@ class Settings(BaseSettings):
     # environment variables.
     PROJECT_NAME: str = "CDIS Template FastAPI"
     API_V1_STR: str = "/api/v1"
+
+    # Mirrors the Node backend's NODE_ENV (src/config/env.ts): defaults to
+    # "development" if unset, same as Node's `process.env["NODE_ENV"] ??
+    # "development"", and pydantic rejects anything outside these four
+    # values the same way Node's explicit check does. Cookie `secure`
+    # (below) and other environment-conditional behavior key off this.
+    ENVIRONMENT: Literal["development", "test", "staging", "production"] = "development"
 
     # The connection string used to connect to the Database.
     # To switch databases, simply change the URL prefix! For example:
@@ -31,6 +40,16 @@ class Settings(BaseSettings):
     # .env.example.
     SECRET_KEY: str
     ALGORITHM: str = "HS256"
+
+    # Token/cookie lifetimes. Not secrets, so a sane default (matching the
+    # Node backend's .env.example defaults) is fine here rather than
+    # requiring every deployment to set them explicitly. Both the JWT's
+    # own expiry and its cookie's max-age are derived from the same
+    # setting (see features/auth/cookies.py) so they can't drift apart --
+    # see docs/parity-notes.md for the Node-side bug this specifically
+    # avoids repeating.
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
     # Tell pydantic to read from a .env file if it exists, and ignore
     # extra variables it doesn't recognize.

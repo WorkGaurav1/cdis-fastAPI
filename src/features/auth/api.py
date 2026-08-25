@@ -7,6 +7,8 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from app.limiter import limiter
 
 # Feature imports
+from config.config import settings
+from features.auth.cookies import clear_auth_cookies, set_auth_cookies
 from features.auth.dependencies import get_current_user
 from features.auth.schemas import LoginRequest
 from features.auth.security import (
@@ -51,20 +53,21 @@ def login(
     # email, so a later email change doesn't invalidate outstanding
     # tokens and lookups don't depend on email casing/uniqueness.
     access_token = create_access_token(
-        data={"sub": user["id"]}, expires_delta=timedelta(minutes=30)
+        data={"sub": user["id"]},
+        expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
     )
 
-    # Set cookies as expected by the frontend
-    response.set_cookie(key="accessToken", value=access_token, httponly=True, secure=True, samesite="lax")
-    response.set_cookie(key="refreshToken", value=access_token, httponly=True, secure=True, samesite="lax")
+    # access_token/refresh_token/csrf_token, flags, paths, and lifetimes
+    # all mirror the Node backend's src/lib/cookies.ts exactly (see
+    # features/auth/cookies.py). refresh_token is still literally the
+    # same JWT as access_token for now -- see refresh()'s docstring.
+    set_auth_cookies(response, access_token=access_token, refresh_token=access_token)
 
     return send_success({"user": _to_safe_user(user)})
 
 @router.post("/logout")
 def logout(response: Response):
-    # Clear HttpOnly cookies on logout.
-    response.delete_cookie("accessToken")
-    response.delete_cookie("refreshToken")
+    clear_auth_cookies(response)
     return send_success({"message": "Logged out successfully."})
 
 @router.get("/me")
@@ -80,14 +83,14 @@ def refresh(request: Request, response: Response):
     # Verifies the refresh-token cookie's JWT the same way /me verifies
     # the access-token cookie, and returns the user it actually names.
     #
-    # NOTE: this is still not a real refresh -- refreshToken is set to
-    # the exact same JWT as accessToken at login (see login() above), so
+    # NOTE: this is still not a real refresh -- refresh_token is set to
+    # the exact same JWT as access_token at login (see login() above), so
     # this only proves the *original* access token hasn't expired; no
     # distinct refresh token, rotation, or reuse detection exists yet.
     # That's tracked separately (P0 step 8 of the gap-analysis priority
     # list / docs/parity-notes.md) and requires real persistence, which
     # doesn't exist yet either.
-    refresh_token = request.cookies.get("refreshToken")
+    refresh_token = request.cookies.get("refresh_token")
     if not refresh_token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

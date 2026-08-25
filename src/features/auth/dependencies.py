@@ -12,15 +12,15 @@ from features.auth.security import decode_access_token
 from features.users.api import get_user_by_id
 
 
-def get_current_user(accessToken: str | None = Cookie(default=None)) -> dict:
-    if not accessToken:
+def get_current_user(access_token: str | None = Cookie(default=None)) -> dict:
+    if not access_token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Authentication is required.",
         )
 
     try:
-        payload = decode_access_token(accessToken)
+        payload = decode_access_token(access_token)
     except jwt.PyJWTError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

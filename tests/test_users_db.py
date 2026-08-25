@@ -10,11 +10,28 @@ from features.users.mapper import to_safe_user
 from features.users.repository import create_user, get_user_by_email, get_user_by_id
 
 USERS_URL = f"{settings.API_V1_STR}/users"
+LOGIN_URL = f"{settings.API_V1_STR}/auth/login"
+
+
+def _login(client: TestClient) -> None:
+    response = client.post(
+        LOGIN_URL, json={"email": "admin@example.com", "password": "password"}
+    )
+    assert response.status_code == 200, response.json()
+
+
+def test_users_endpoint_requires_authentication(client: TestClient):
+    client.cookies.clear()
+    response = client.get(USERS_URL)
+    assert response.status_code == 401
+    client.cookies.clear()
 
 
 def test_users_endpoint_returns_the_seeded_db_rows_not_a_fake_list(
     client: TestClient, default_user_emails: set[str]
 ):
+    _login(client)
+
     response = client.get(USERS_URL)
 
     assert response.status_code == 200
@@ -25,12 +42,15 @@ def test_users_endpoint_returns_the_seeded_db_rows_not_a_fake_list(
     # that the seeded rows are present and real, not that these three
     # are the *only* rows that will ever exist.
     assert emails >= default_user_emails
+    client.cookies.clear()
 
 
 def test_users_endpoint_never_leaks_hashed_password(client: TestClient):
+    _login(client)
     response = client.get(USERS_URL)
     for user in response.json()["data"]["users"]:
         assert "hashed_password" not in user
+    client.cookies.clear()
 
 
 def test_create_user_persists_and_is_retrievable_by_email_and_id(db_session: Session):

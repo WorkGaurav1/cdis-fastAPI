@@ -1,12 +1,3 @@
-from fastapi.testclient import TestClient
-
-
-def test_health_check(client: TestClient):
-    response = client.get("/health")
-    assert response.status_code == 200
-    assert response.json() == {"status": "ok"}
-
-
 # NOTE: there used to be a test_create_user here, asserting
 # POST /api/v1/users/ returns 201 -- but that route was never actually
 # defined on the users router (only GET "" is), so the test could never
@@ -15,3 +6,7 @@ def test_health_check(client: TestClient):
 # which is what this template's own users:write-adjacent flow actually
 # is. Removed rather than "fixed" by inventing a non-Node-parity route
 # just to make a stale test green.
+#
+# The health-check test that used to live in this file moved to
+# tests/test_health.py, mirroring Node's own separate
+# health.controller.test.ts -- it isn't really a "users" test.

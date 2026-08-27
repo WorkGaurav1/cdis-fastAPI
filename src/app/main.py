@@ -1,16 +1,25 @@
 # Main Application Entrypoint.
 
-from fastapi import FastAPI, Request
+import time
+from datetime import datetime, timezone
+
+from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi.middleware import SlowAPIMiddleware
+from sqlalchemy import text
+from sqlmodel import Session
 
 from app.limiter import limiter
 from config.config import settings
+from config.database import get_session
 from features.auth import api as auth
 from features.demo import api as demo
 from features.users import api as users
+from utils.apiResponse import send_success
 from utils.error_handlers import register_error_handlers
 from utils.logging import configure_logging, log_requests
+
+_process_started_at = time.monotonic()
 
 # Structured logging (JSON in prod/staging, console in dev, silent in
 # test) with credential/token redaction -- see utils/logging.py. Must
@@ -86,10 +95,27 @@ app.include_router(demo.router, prefix=f"{settings.API_V1_STR}/demo", tags=["dem
 
 
 @app.get("/health", tags=["health"])
-def health_check():
+def health_check(session: Session = Depends(get_session)):
     """
-    Standard health check endpoint.
-    Used by load balancers and container orchestrators (like Docker/
-    Kubernetes) to verify the server is running.
+    Liveness + readiness check, mirroring the Node backend's
+    src/controllers/health.controller.ts exactly: verifies the process
+    is up AND that the database is actually reachable (a real `SELECT
+    1`, not a liveness-only ping), so this can be wired into container
+    orchestration health checks as a genuine readiness probe. If the DB
+    query raises, that propagates to the global exception handler
+    (utils/error_handlers.py) and becomes a 500 -- the same fallback
+    Express 5 gives Node's version, which has no try/catch of its own
+    either.
     """
-    return {"status": "ok"}
+    # .execute(), not .exec(): SQLModel's Session.exec() is typed only
+    # for statement-returning ORM queries (select()), not a raw
+    # TextClause -- .execute() is the underlying SQLAlchemy Session
+    # method both inherit, and is correctly typed for this.
+    session.execute(text("SELECT 1"))
+    return send_success(
+        {
+            "status": "ok",
+            "uptimeSeconds": round(time.monotonic() - _process_started_at),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
+    )

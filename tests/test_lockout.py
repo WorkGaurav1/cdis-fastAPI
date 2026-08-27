@@ -78,13 +78,23 @@ def test_successful_login_resets_failed_attempts(client: TestClient, db_session)
     user = get_user_by_email(db_session, "lockout-3@example.com")
     assert user.failed_login_attempts == 2
 
+    # Ends db_session's current transaction before the assertions below
+    # re-query -- otherwise, under MySQL's default REPEATABLE READ
+    # isolation, this session's open transaction keeps the snapshot it
+    # already took (above) and `refresh()` alone won't observe the
+    # commit the login request below makes in its *own*, separate
+    # session/request. SQLite's simpler locking model doesn't surface
+    # this, which is exactly why this suite also runs against real
+    # MySQL in CI (see tests/conftest.py's TEST_DB_BACKEND).
+    db_session.commit()
+
     response = client.post(
         LOGIN_URL,
         json={"email": "lockout-3@example.com", "password": CORRECT_PASSWORD},
     )
     assert response.status_code == 200
 
-    db_session.refresh(user)
+    user = get_user_by_email(db_session, "lockout-3@example.com")
     assert user.failed_login_attempts == 0
     assert user.locked_until is None
     client.cookies.clear()

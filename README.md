@@ -110,6 +110,18 @@ just test       # pytest, with coverage enforced (85% floor)
 use, per `requirements.lock`/`requirements-dev.lock`. See `justfile`
 for the exact commands if you don't use `just`.)
 
+By default `pytest` runs against an in-memory SQLite database (fast,
+no setup). CI additionally runs the exact same suite against a real,
+Alembic-migrated MySQL service container, to catch MySQL-specific
+behavior SQLite can't (e.g. transaction isolation differences). To run
+that mode locally against `docker compose`'s `db` service:
+
+```bash
+docker compose up -d db
+DATABASE_URL="mysql+pymysql://user:password@localhost:3307/dbname" alembic upgrade head
+DATABASE_URL="mysql+pymysql://user:password@localhost:3307/dbname" TEST_DB_BACKEND=mysql pytest
+```
+
 ---
 
 ## Documentation

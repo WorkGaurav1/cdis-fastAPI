@@ -75,7 +75,16 @@ exclude_lines = [
 # vitest.config.ts does for its equivalent required env vars. These are
 # test-only and never used outside the suite.
 [tool.pytest_env]
-DATABASE_URL = "mysql+pymysql://test:test@localhost/test_unused"
+# skip_if_set = "only set if not already present in the environment" --
+# lets CI's integration-test job (TEST_DB_BACKEND=mysql,
+# tests/conftest.py) point this at a real MySQL service container via a
+# real DATABASE_URL env var, while every other run (no such var set)
+# gets this harmless placeholder, satisfying Settings' fail-fast
+# requirement without needing a real database at all in SQLite mode.
+# (The "D:" prefix pytest-env docs mention is ini-linelist syntax only
+# -- this [tool.pytest_env] TOML-table form needs the dict-value form
+# instead, per pytest-env's own _parse_toml_config.)
+DATABASE_URL = { value = "mysql+pymysql://test:test@localhost/test_unused", skip_if_set = true }
 SECRET_KEY = "test-only-secret-never-used-outside-the-test-suite"
 # Matches vitest.config.ts's NODE_ENV="test" -- keeps request logging
 # quiet during the suite (utils/logging.py treats "test" the same as

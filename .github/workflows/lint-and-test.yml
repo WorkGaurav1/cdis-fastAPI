@@ -57,8 +57,66 @@ jobs:
         pip-audit -r requirements.lock
         pip-audit -r requirements-dev.lock
 
+  # Runs the exact same test suite as lint-and-test above, but against a
+  # real, Alembic-migrated MySQL service container instead of SQLite --
+  # mirrors the role a MySQL service container plays in the Node
+  # backend's own CI (its `cdis_test` database). Catches MySQL-specific
+  # behavior SQLite can't (this uncovered a real one: MySQL's default
+  # REPEATABLE READ transaction isolation vs. SQLite's simpler locking
+  # model -- see tests/test_lockout.py's db_session.commit() comment).
+  # A separate job (not folded into lint-and-test) so a MySQL-specific
+  # failure is clearly distinguishable from a lint/type/SQLite-test one.
+  integration-test:
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_DATABASE: fastapi_template_test
+          MYSQL_USER: fastapi_template
+          MYSQL_PASSWORD: ci-only-db-password
+          MYSQL_ROOT_PASSWORD: ci-only-db-root-password
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost -uroot -pci-only-db-root-password"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+
+    env:
+      # CI-only value, matching the mysql: service above -- not a
+      # secret, and this database is thrown away at the end of the job
+      # either way.
+      DATABASE_URL: "mysql+pymysql://fastapi_template:ci-only-db-password@127.0.0.1:3306/fastapi_template_test"
+      SECRET_KEY: "ci-only-secret-never-used-outside-github-actions"
+      TEST_DB_BACKEND: "mysql"
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.10"
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements-dev.lock
+        pip install --no-deps -e .
+
+    - name: Apply migrations
+      run: |
+        alembic upgrade head
+
+    - name: Test with pytest against real MySQL
+      run: |
+        pytest
+
   build-image:
-    needs: lint-and-test
+    needs: [lint-and-test, integration-test]
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3

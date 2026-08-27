@@ -16,6 +16,7 @@ dependencies = [
     "pyjwt>=2.8.0",
     "passlib[bcrypt]>=1.7.4",
     "alembic>=1.13.0",
+    "structlog>=24.1.0",
 ]
 
 [project.optional-dependencies]
@@ -48,6 +49,11 @@ pythonpath = ["src"]
 [tool.pytest_env]
 DATABASE_URL = "mysql+pymysql://test:test@localhost/test_unused"
 SECRET_KEY = "test-only-secret-never-used-outside-the-test-suite"
+# Matches vitest.config.ts's NODE_ENV="test" -- keeps request logging
+# quiet during the suite (utils/logging.py treats "test" the same as
+# Node's "silent" log level) and exercises Settings' real "test" value
+# rather than only ever testing against the "development" default.
+ENVIRONMENT = "test"
 
 [tool.pyright]
 # Tells Pyright to treat the "src" folder as a root for imports

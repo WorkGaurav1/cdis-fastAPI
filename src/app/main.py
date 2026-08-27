@@ -10,12 +10,23 @@ from features.auth import api as auth
 from features.demo import api as demo
 from features.users import api as users
 from utils.error_handlers import register_error_handlers
+from utils.logging import configure_logging, log_requests
+
+# Structured logging (JSON in prod/staging, console in dev, silent in
+# test) with credential/token redaction -- see utils/logging.py. Must
+# run before anything else logs, so the root logger's handlers are
+# already in place.
+configure_logging()
 
 # Initialize the core FastAPI web application using settings from our config file
 app = FastAPI(
     title=settings.PROJECT_NAME,
     openapi_url=f"{settings.API_V1_STR}/openapi.json"
 )
+
+# One structured log line per request (method/path/status/duration/request
+# id) -- mirrors src/app.ts's `pinoHttp({ logger })`.
+app.middleware("http")(log_requests)
 
 # Central error handling — every error path (raised HTTPExceptions,
 # FastAPI's own 404/405s, request-validation failures, unhandled

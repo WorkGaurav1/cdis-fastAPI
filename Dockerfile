@@ -2,10 +2,18 @@
 FROM python:3.10-slim AS builder
 
 WORKDIR /app
-COPY pyproject.toml .
+COPY pyproject.toml requirements.lock .
 
+# Dependencies come from requirements.lock's exact, hash-verified pins
+# (regenerate with `pip-compile --generate-hashes pyproject.toml -o
+# requirements.lock` whenever pyproject.toml's dependencies change) --
+# the same reproducibility guarantee the Node backend's `npm ci` gets
+# from package-lock.json. --no-deps on the second call installs this
+# project's own code without letting pip re-resolve its dependencies
+# from pyproject.toml's loose ranges -- they're already locked above.
 RUN pip install --no-cache-dir pip==23.2.1 && \
-    pip wheel --no-cache-dir --wheel-dir /app/wheels .
+    pip wheel --no-cache-dir --wheel-dir /app/wheels -r requirements.lock && \
+    pip wheel --no-cache-dir --wheel-dir /app/wheels --no-deps .
 
 # Final stage
 FROM python:3.10-slim

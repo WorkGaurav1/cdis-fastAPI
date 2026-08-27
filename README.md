@@ -104,8 +104,11 @@ just typecheck  # pyright
 just test       # pytest, with coverage enforced (85% floor)
 ```
 
-(Requires a local Python environment with `pip install -e .[dev]` --
-see `justfile` for the exact commands if you don't use `just`.)
+(Requires a local Python environment:
+`pip install -r requirements-dev.lock && pip install --no-deps -e .`
+-- installs every dependency at the exact version CI and Docker both
+use, per `requirements.lock`/`requirements-dev.lock`. See `justfile`
+for the exact commands if you don't use `just`.)
 
 ---
 

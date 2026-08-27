@@ -9,6 +9,7 @@ This backend follows a modular, Feature-Based approach. To add a new feature (e.
 5. **Register the Router**: Open `src/app/main.py` and include your new router in the main FastAPI app:
    ```python
    from features.products import api as products
+
    app.include_router(products.router, prefix="/api/v1/products", tags=["products"])
    ```
 

@@ -88,3 +88,23 @@ def test_logout_without_csrf_header_is_403_even_when_authenticated(client: TestC
     assert response.status_code == 403
     assert response.json()["error"]["message"] == "Missing or invalid CSRF token."
     client.cookies.clear()
+
+
+def test_logout_with_neither_auth_nor_csrf_is_401_not_403(client: TestClient):
+    # Regression guard: logout's dependencies must resolve in Node's
+    # order (auth checked before CSRF, src/routes/auth.routes.ts:
+    # requireAuth, requireCsrfToken) so a request failing *both* checks
+    # simultaneously gets 401 (who are you?), not 403 (you can't do
+    # that). A route-level `dependencies=[Depends(require_csrf_token)]`
+    # silently reverses this -- FastAPI resolves those before any
+    # function-parameter Depends() regardless of declaration order --
+    # so this is the one case that actually distinguishes the two
+    # orderings; test_logout_without_auth_is_401 above sends a *valid*
+    # CSRF pair and so can't catch it.
+    client.cookies.clear()
+
+    response = client.post(LOGOUT_URL)  # no cookies, no CSRF header at all
+
+    assert response.status_code == 401
+    assert response.json()["error"]["code"] == "UNAUTHORIZED"
+    client.cookies.clear()

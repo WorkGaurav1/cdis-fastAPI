@@ -113,18 +113,31 @@ def login(
     return send_success({"user": _safe_user_payload(session, user)})
 
 
-@router.post("/logout", dependencies=[Depends(require_csrf_token)])
+@router.post("/logout")
 def logout(
     request: Request,
     response: Response,
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
+    _csrf_ok: None = Depends(require_csrf_token),
 ):
     # Mirrors Node's route wiring exactly: requireAuth then
-    # requireCsrfToken (src/routes/auth.routes.ts), then revokes the
-    # refresh token server-side so a copy of it (e.g. stolen from
-    # storage) can't be used at /auth/refresh after this point.
+    # requireCsrfToken (src/routes/auth.routes.ts) -- auth (401) checked
+    # before CSRF (403), so a request failing both gets 401, matching
+    # Node.
+    #
+    # This must NOT be a route-level `dependencies=[...]` entry: FastAPI
+    # inserts those at index 0 of the dependant's dependency list ahead
+    # of every function-parameter Depends(), regardless of where they
+    # appear in the signature (fastapi/routing.py's APIRoute.__init__)
+    # -- so a route-level require_csrf_token would run *before*
+    # get_current_user even though it's declared after it, silently
+    # reversing this exact ordering. Declaring it as the last
+    # parameter-level Depends() here makes declaration order the real
+    # resolution order. See tests/test_csrf.py's ordering test for the
+    # regression guard.
     _ = current_user
+    _ = _csrf_ok
     raw_refresh_token = request.cookies.get("refresh_token")
     if raw_refresh_token:
         revoke_refresh_token(session, raw_refresh_token)

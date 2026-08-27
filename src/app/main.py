@@ -2,8 +2,7 @@
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from slowapi import _rate_limit_exceeded_handler
-from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 
 from app.limiter import limiter
 from config.config import settings
@@ -40,9 +39,14 @@ app.add_middleware(
 )
 
 # Security & Rate Limiting (VAPT Requirements)
-# Attach Rate Limiter to the app
+# Attach Rate Limiter to the app. SlowAPIMiddleware is what actually
+# enforces limiter.default_limits (app/limiter.py) on routes that don't
+# have their own @limiter.limit(...) -- without it, only explicitly
+# decorated routes (like /auth/login) were ever throttled at all. The
+# RateLimitExceeded -> {success,error} envelope handler is registered
+# by register_error_handlers() above, alongside every other error path.
 app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_middleware(SlowAPIMiddleware)
 
 @app.middleware("http")
 async def add_security_headers(request: Request, call_next):

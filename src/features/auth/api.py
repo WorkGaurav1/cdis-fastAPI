@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlmodel import Session
 
 # Imports for rate limiting
-from app.limiter import limiter
+from app.limiter import limiter, login_rate_limit_key
 
 # Feature imports
 from config.database import get_session
@@ -91,7 +91,7 @@ def register(
 
 
 @router.post("/login")
-@limiter.limit("5/minute")
+@limiter.limit("10/15 minutes", key_func=login_rate_limit_key)
 def login(
     request: Request,
     response: Response,

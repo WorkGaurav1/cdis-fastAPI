@@ -14,6 +14,7 @@ import logging
 from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from slowapi.errors import RateLimitExceeded
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from utils.apiResponse import send_error
@@ -82,6 +83,24 @@ async def validation_exception_handler(
     )
 
 
+async def rate_limit_exceeded_handler(
+    request: Request, exc: RateLimitExceeded
+) -> JSONResponse:
+    # slowapi's own default handler returns {"error": "..."} -- same
+    # envelope shape as every other error path here instead, so 429s
+    # aren't the one response shape the frontend's error interceptor
+    # can't parse.
+    logger.warning(
+        "Rate limit exceeded on %s %s: %s", request.method, request.url.path, exc.detail
+    )
+    response = JSONResponse(
+        status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+        content=send_error(_code_for_status(429), f"Rate limit exceeded: {exc.detail}"),
+    )
+    limiter = request.app.state.limiter
+    return limiter._inject_headers(response, request.state.view_rate_limit)
+
+
 async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     # Anything else is an unexpected programming error: logged in full
     # server-side (stack trace included), but the client only ever sees a
@@ -100,4 +119,5 @@ async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONR
 def register_error_handlers(app: FastAPI) -> None:
     app.add_exception_handler(StarletteHTTPException, http_exception_handler)
     app.add_exception_handler(RequestValidationError, validation_exception_handler)
+    app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
     app.add_exception_handler(Exception, unhandled_exception_handler)

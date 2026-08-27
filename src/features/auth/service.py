@@ -72,13 +72,16 @@ def authenticate_user(session: Session, email: str, password: str) -> User:
         )
 
     if not verify_password(password, user.hashed_password):
-        attempts = user.failed_login_attempts + 1
-        locked_until = (
-            utcnow() + timedelta(minutes=settings.LOCKOUT_DURATION_MINUTES)
-            if attempts >= settings.LOCKOUT_MAX_ATTEMPTS
-            else None
+        # Atomic increment + conditional lock, not a Python
+        # read-modify-write -- see record_failed_login()'s docstring
+        # for the concurrent-request race this avoids.
+        record_failed_login(
+            session,
+            user,
+            lockout_max_attempts=settings.LOCKOUT_MAX_ATTEMPTS,
+            locked_until_if_tripped=utcnow()
+            + timedelta(minutes=settings.LOCKOUT_DURATION_MINUTES),
         )
-        record_failed_login(session, user, attempts, locked_until)
         raise _invalid_credentials
 
     reset_failed_logins(session, user)

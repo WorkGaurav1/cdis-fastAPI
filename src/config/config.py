@@ -2,6 +2,7 @@
 
 from typing import Literal
 
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -38,7 +39,13 @@ class Settings(BaseSettings):
     # deployment that forgot to override it). Generate a unique,
     # securely-random value per environment; never reuse the value from
     # .env.example.
-    SECRET_KEY: str
+    #
+    # min_length=32 catches the weak-but-present case a missing-value
+    # check alone doesn't: SECRET_KEY="x" used to boot cleanly and would
+    # then sign every JWT with a trivially brute-forceable key. 32 chars
+    # is a floor, not a target -- .env.example's own
+    # `secrets.token_hex(32)` recommendation produces 64.
+    SECRET_KEY: str = Field(min_length=32)
     ALGORITHM: str = "HS256"
 
     # Token/cookie lifetimes. Not secrets, so a sane default (matching the

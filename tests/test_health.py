@@ -32,13 +32,19 @@ def test_health_check_is_actually_db_backed_not_a_liveness_only_ping(
         raise ConnectionError("simulated database outage")
         yield  # pragma: no cover - makes this a generator, never reached
 
-    # Capture (rather than re-import) conftest.py's real override:
-    # `from tests.conftest import ...` here would load conftest.py a
-    # second time under a different module name in pytest's rootless
+    # Capture (rather than re-import) conftest.py's real override, if
+    # any: `from tests.conftest import ...` here would load conftest.py
+    # a second time under a different module name in pytest's rootless
     # import mode (no tests/__init__.py), handing back a second, empty
     # SQLite engine -- the same pitfall tests/test_users_db.py's
-    # db_session fixture comment documents.
-    real_override = app.dependency_overrides[get_session]
+    # db_session fixture comment documents. There may be no override at
+    # all here in the first place: CI's MySQL integration mode
+    # (conftest.py's TEST_DB_BACKEND=="mysql" branch) installs none,
+    # letting requests hit the real DATABASE_URL-backed engine directly
+    # -- so this must use .get() and restore via pop-if-absent, not
+    # assume the key exists.
+    had_override = get_session in app.dependency_overrides
+    real_override = app.dependency_overrides.get(get_session)
     app.dependency_overrides[get_session] = _broken_session
     try:
         # raise_server_exceptions=False: TestClient's default propagates
@@ -48,7 +54,10 @@ def test_health_check_is_actually_db_backed_not_a_liveness_only_ping(
         with TestClient(app, raise_server_exceptions=False) as broken_client:
             response = broken_client.get("/health")
     finally:
-        app.dependency_overrides[get_session] = real_override
+        if had_override:
+            app.dependency_overrides[get_session] = real_override
+        else:
+            del app.dependency_overrides[get_session]
 
     assert response.status_code == 500
     assert response.json()["success"] is False

@@ -7,7 +7,7 @@ from config.config import Settings
 
 def test_cors_origins_list_parses_comma_separated_string():
     settings = Settings(
-        SECRET_KEY="test",
+        SECRET_KEY="test-only-secret-not-used-for-anything-real",
         DATABASE_URL="mysql+pymysql://t:t@localhost/t",
         CORS_ORIGINS="https://a.example.com, https://b.example.com,https://c.example.com",
     )
@@ -20,7 +20,8 @@ def test_cors_origins_list_parses_comma_separated_string():
 
 def test_cors_origins_default_covers_local_dev_ports():
     settings = Settings(
-        SECRET_KEY="test", DATABASE_URL="mysql+pymysql://t:t@localhost/t"
+        SECRET_KEY="test-only-secret-not-used-for-anything-real",
+        DATABASE_URL="mysql+pymysql://t:t@localhost/t",
     )
     assert "http://localhost:3000" in settings.cors_origins_list
     assert "http://localhost:5173" in settings.cors_origins_list

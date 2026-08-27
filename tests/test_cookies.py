@@ -33,7 +33,7 @@ def _issue_cookies_with_environment(environment: str) -> list[str]:
     original_settings = cookies_module.settings
     try:
         cookies_module.settings = Settings(
-            SECRET_KEY="test",
+            SECRET_KEY="test-only-secret-not-used-for-anything-real",
             DATABASE_URL="mysql+pymysql://t:t@localhost/t",
             ENVIRONMENT=environment,
         )

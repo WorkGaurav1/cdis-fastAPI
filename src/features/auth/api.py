@@ -26,6 +26,7 @@ from features.users.mapper import to_safe_user
 from features.users.models import User
 from features.users.repository import create_user, get_user_by_email
 from utils.apiResponse import send_success
+from utils.db import require_id
 
 router = APIRouter()
 
@@ -47,7 +48,9 @@ def _set_cookies_from(response: Response, tokens: TokenPair) -> None:
 
 
 def _safe_user_payload(session: Session, user: User) -> dict:
-    roles, permissions = get_roles_and_permissions_for_user(session, user.id)
+    roles, permissions = get_roles_and_permissions_for_user(
+        session, require_id(user.id)
+    )
     return to_safe_user(user, roles, permissions)
 
 
@@ -82,7 +85,7 @@ def register(
         raise RuntimeError(
             "Default role 'user' is missing. Run `python -m scripts.seed`."
         )
-    ensure_user_has_role(session, user.id, default_role.id)
+    ensure_user_has_role(session, require_id(user.id), require_id(default_role.id))
 
     tokens = issue_token_pair(session, user, **_request_context(request))
     _set_cookies_from(response, tokens)

@@ -78,10 +78,14 @@ def get_roles_and_permissions_for_user(
     """
     roles = session.exec(
         select(Role)
-        .join(UserRole, UserRole.role_id == Role.id)
-        .where(  # type: ignore[arg-type]
-            UserRole.user_id == user_id
-        )
+        # SQLAlchemy's declarative columns are InstrumentedAttribute at
+        # the class level, so `UserRole.role_id == Role.id` is a real
+        # SQL boolean expression at runtime -- Pyright infers the
+        # columns' plain Python value types instead and sees a `bool`
+        # (sqlalchemy/sqlalchemy#9789), the standard join()-with-explicit-
+        # on-clause idiom.
+        .join(UserRole, UserRole.role_id == Role.id)  # pyright: ignore[reportArgumentType]
+        .where(UserRole.user_id == user_id)
     ).all()
     role_names = [role.name for role in roles]
 
@@ -91,8 +95,14 @@ def get_roles_and_permissions_for_user(
     role_ids = [role.id for role in roles]
     permissions = session.exec(
         select(Permission)
-        .join(RolePermission, RolePermission.permission_id == Permission.id)  # type: ignore[arg-type]
-        .where(RolePermission.role_id.in_(role_ids))  # type: ignore[union-attr]
+        # Same join()-with-explicit-on-clause stub limitation as above.
+        .join(
+            RolePermission,
+            RolePermission.permission_id == Permission.id,  # pyright: ignore[reportArgumentType]
+        )
+        # Same InstrumentedAttribute-vs-declared-type stub limitation as
+        # RefreshToken.revoked_at.is_(None) in repository.py.
+        .where(RolePermission.role_id.in_(role_ids))  # pyright: ignore[reportAttributeAccessIssue]
     ).all()
     permission_keys = sorted({permission.key for permission in permissions})
 

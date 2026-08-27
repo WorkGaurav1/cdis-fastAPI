@@ -12,6 +12,8 @@ __pycache__/
 
 # Pytest
 .pytest_cache/
+.coverage
+htmlcov/
 
 # Ruff
 .ruff_cache/

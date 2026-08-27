@@ -15,6 +15,7 @@ from features.auth.rbac_repository import get_roles_and_permissions_for_user
 from features.auth.security import decode_access_token
 from features.users.models import User
 from features.users.repository import get_user_by_id
+from utils.db import require_id
 
 
 def get_current_user(
@@ -39,11 +40,17 @@ def get_current_user(
         ) from None
 
     # sub is always serialized as a string in a JWT (RFC 7519), but the
-    # real User table's id is an int -- a non-numeric sub is exactly as
-    # invalid as a bad signature.
+    # real User table's id is an int -- a missing or non-numeric sub is
+    # exactly as invalid as a bad signature.
+    sub = payload.get("sub")
+    if not isinstance(sub, str):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Your session is invalid or has expired.",
+        )
     try:
-        user_id = int(payload.get("sub"))
-    except (TypeError, ValueError):
+        user_id = int(sub)
+    except ValueError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Your session is invalid or has expired.",
@@ -106,7 +113,9 @@ def require_permission(permission: str) -> Callable[..., User]:
         current_user: User = Depends(get_current_user),
         session: Session = Depends(get_session),
     ) -> User:
-        _, permissions = get_roles_and_permissions_for_user(session, current_user.id)
+        _, permissions = get_roles_and_permissions_for_user(
+            session, require_id(current_user.id)
+        )
         if permission not in permissions:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,

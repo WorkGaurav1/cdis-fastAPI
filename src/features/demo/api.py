@@ -17,6 +17,7 @@ from features.demo.repository import (
 )
 from features.users.models import User
 from utils.apiResponse import send_success
+from utils.db import require_id
 
 router = APIRouter()
 
@@ -45,7 +46,9 @@ def get_charts(
     _ = current_user
     datasets = list_chart_datasets(session, chart_type=type)
     result = [
-        to_chart_dataset_response(dataset, list_chart_points(session, dataset.id))
+        to_chart_dataset_response(
+            dataset, list_chart_points(session, require_id(dataset.id))
+        )
         for dataset in datasets
     ]
     return send_success({"datasets": result})
@@ -59,7 +62,9 @@ def get_tables(
     _ = current_user
     datasets = list_table_datasets(session)
     result = [
-        to_table_dataset_response(dataset, list_table_rows(session, dataset.id))
+        to_table_dataset_response(
+            dataset, list_table_rows(session, require_id(dataset.id))
+        )
         for dataset in datasets
     ]
     return send_success({"datasets": result})

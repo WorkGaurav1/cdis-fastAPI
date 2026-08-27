@@ -117,7 +117,23 @@ async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONR
 
 
 def register_error_handlers(app: FastAPI) -> None:
-    app.add_exception_handler(StarletteHTTPException, http_exception_handler)
-    app.add_exception_handler(RequestValidationError, validation_exception_handler)
-    app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
+    # add_exception_handler()'s own type hint (ExceptionHandler) is a
+    # union broad enough to cover HTTPException/WebSocket handlers too,
+    # so a handler correctly typed for one specific exception class
+    # (rather than the bare `Exception`/`HTTPException` the union
+    # expects) trips Pyright's contravariance check here -- a
+    # well-known FastAPI/Starlette typing limitation, not a real bug:
+    # FastAPI dispatches by the registered class at runtime regardless.
+    app.add_exception_handler(
+        StarletteHTTPException,
+        http_exception_handler,  # pyright: ignore[reportArgumentType]
+    )
+    app.add_exception_handler(
+        RequestValidationError,
+        validation_exception_handler,  # pyright: ignore[reportArgumentType]
+    )
+    app.add_exception_handler(
+        RateLimitExceeded,
+        rate_limit_exceeded_handler,  # pyright: ignore[reportArgumentType]
+    )
     app.add_exception_handler(Exception, unhandled_exception_handler)

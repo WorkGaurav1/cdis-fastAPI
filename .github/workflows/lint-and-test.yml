@@ -1,43 +1,55 @@
 name: Lint and Test
 
 on:
+  push:
+    branches: [ "main", "master" ]
   pull_request:
     branches: [ "main", "master" ]
 
+# Stage order: lint -> format check -> type check -> test (coverage
+# enforced via pyproject.toml's [tool.coverage.report] fail_under,
+# applied automatically since pytest's addopts always runs --cov) ->
+# build. Mirrors the spirit of the Node backend's own locked CI order
+# (lint -> type-check -> tests -> build -> ... -> coverage -> security),
+# adapted to this project's simpler single-job shape.
 jobs:
   lint-and-test:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-    
+
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
         python-version: "3.10"
-        
+
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install .[dev]
-        
+
     - name: Run Ruff Linter
       run: |
         ruff check .
-        
+
     - name: Run Ruff Formatter check
       run: |
         ruff format --check .
-        
-    - name: Test with pytest
+
+    - name: Run Pyright type check
+      run: |
+        pyright --pythonpath "$(command -v python)" src
+
+    - name: Test with pytest (coverage threshold enforced via pyproject.toml)
       run: |
         pytest
-        
+
   build-image:
     needs: lint-and-test
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-    
+
     - name: Build Docker image
       run: |
         docker build -t cdis-template-fastapi:latest .

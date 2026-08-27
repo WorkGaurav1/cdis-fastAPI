@@ -10,6 +10,7 @@ from features.users.mapper import to_safe_user
 from features.users.models import User
 from features.users.repository import list_users
 from utils.apiResponse import send_success
+from utils.db import require_id
 
 router = APIRouter()
 
@@ -28,6 +29,8 @@ def read_users(
     users = list_users(session, skip=skip, limit=limit)
     safe_users = []
     for user in users:
-        roles, permissions = get_roles_and_permissions_for_user(session, user.id)
+        roles, permissions = get_roles_and_permissions_for_user(
+            session, require_id(user.id)
+        )
         safe_users.append(to_safe_user(user, roles, permissions))
     return send_success({"users": safe_users})

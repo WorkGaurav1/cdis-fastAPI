@@ -35,7 +35,12 @@ def list_chart_points(session: Session, dataset_id: int) -> list[DemoChartPoint]
         session.exec(
             select(DemoChartPoint)
             .where(DemoChartPoint.dataset_id == dataset_id)
-            .order_by(DemoChartPoint.sort_order)
+            # order_by() on an int-typed column specifically confuses
+            # Pyright's overload resolution for SQLModel/SQLAlchemy's
+            # stubs (it's fine on the str-typed columns used elsewhere
+            # in this file) -- a real SQLAlchemy query-building idiom,
+            # not a type error.
+            .order_by(DemoChartPoint.sort_order)  # pyright: ignore[reportArgumentType]
         ).all()
     )
 
@@ -51,7 +56,9 @@ def list_table_rows(session: Session, dataset_id: int) -> list[DemoTableRow]:
         session.exec(
             select(DemoTableRow)
             .where(DemoTableRow.dataset_id == dataset_id)
-            .order_by(DemoTableRow.sort_order)
+            # Same int-typed-column order_by() stub limitation as
+            # list_chart_points() above.
+            .order_by(DemoTableRow.sort_order)  # pyright: ignore[reportArgumentType]
         ).all()
     )
 

@@ -31,6 +31,7 @@ from features.users.repository import (
     record_failed_login,
     reset_failed_logins,
 )
+from utils.db import require_id
 from utils.time import utcnow
 
 
@@ -101,7 +102,7 @@ def issue_token_pair(
     raw_refresh_token = generate_refresh_token_value()
     stored = create_refresh_token(
         session,
-        user_id=user.id,
+        user_id=require_id(user.id),
         token_hash=hash_refresh_token(raw_refresh_token),
         expires_at=refresh_token_expiry(),
         created_by_ip=ip,
@@ -110,7 +111,7 @@ def issue_token_pair(
     return TokenPair(
         access_token=access_token,
         refresh_token=raw_refresh_token,
-        refresh_token_id=stored.id,
+        refresh_token_id=require_id(stored.id),
     )
 
 

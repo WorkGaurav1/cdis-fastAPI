@@ -63,7 +63,14 @@ def revoke_all_for_user(session: Session, user_id: int) -> None:
     """
     active_tokens = session.exec(
         select(RefreshToken).where(
-            RefreshToken.user_id == user_id, RefreshToken.revoked_at.is_(None)
+            RefreshToken.user_id == user_id,
+            # RefreshToken.revoked_at is an InstrumentedAttribute at the
+            # class level (supporting comparator methods like .is_()),
+            # but Pyright infers the column's plain annotated Python
+            # type (datetime | None) instead, so it doesn't see .is_()
+            # as a valid method -- a standard SQLAlchemy query-building
+            # idiom, not a type error.
+            RefreshToken.revoked_at.is_(None),  # pyright: ignore[reportAttributeAccessIssue, reportOptionalMemberAccess]
         )
     ).all()
     now = utcnow()

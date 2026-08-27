@@ -36,6 +36,7 @@ from features.demo.seed_data import (
     random_project_count,
 )
 from features.users.repository import create_user, get_user_by_email
+from utils.db import require_id
 
 # Mirrors prisma/seed.ts's PERMISSIONS/ROLES exactly.
 PERMISSIONS = [
@@ -80,7 +81,9 @@ def _seed_roles_and_permissions(session: Session) -> None:
         role = get_or_create_role(session, name, definition["description"])
         for permission_key in definition["permissions"]:
             permission = get_or_create_permission(session, permission_key)
-            ensure_role_has_permission(session, role.id, permission.id)
+            ensure_role_has_permission(
+                session, require_id(role.id), require_id(permission.id)
+            )
 
 
 def _seed_users(session: Session) -> None:
@@ -95,7 +98,7 @@ def _seed_users(session: Session) -> None:
             )
 
         role = get_or_create_role(session, entry["role"])
-        ensure_user_has_role(session, user.id, role.id)
+        ensure_user_has_role(session, require_id(user.id), require_id(role.id))
 
 
 def _seed_demo_data(session: Session) -> None:
@@ -116,7 +119,7 @@ def _seed_demo_data(session: Session) -> None:
             chart_type=dataset["chart_type"],
             description=dataset["description"],
         )
-        replace_chart_points(session, record.id, dataset["points"])
+        replace_chart_points(session, require_id(record.id), dataset["points"])
 
     for dataset in build_table_datasets():
         record = upsert_table_dataset(
@@ -125,7 +128,7 @@ def _seed_demo_data(session: Session) -> None:
             title=dataset["title"],
             description=dataset["description"],
         )
-        replace_table_rows(session, record.id, dataset["rows"])
+        replace_table_rows(session, require_id(record.id), dataset["rows"])
 
 
 def seed() -> None:

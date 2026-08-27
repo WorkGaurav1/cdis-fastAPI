@@ -79,5 +79,10 @@ class Settings(BaseSettings):
     )
 
 
-# Instantiate a global settings object that can be imported anywhere in the app
-settings = Settings()
+# Instantiate a global settings object that can be imported anywhere in the app.
+# DATABASE_URL/SECRET_KEY are sourced from the environment/.env at
+# runtime (pydantic-settings' whole purpose), not passed as constructor
+# args here -- Pyright's inferred __init__ signature doesn't know that,
+# a well-documented pydantic-settings + strict-typechecker friction
+# point (pydantic/pydantic-settings#78).
+settings = Settings()  # pyright: ignore[reportCallIssue]

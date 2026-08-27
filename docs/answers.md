@@ -21,8 +21,12 @@ This document contains answers to common technical questions you might face duri
 **Answer:** By default, web servers like Apache will include a "Server" header in their HTTP responses (e.g., `Server: Apache/2.4.41 (Ubuntu)`). This is called a Server Token. It is considered an information leak. If a hacker knows exactly what version of Apache and which OS you are running, they can easily look up known vulnerabilities for that specific version. Disabling it (`ServerTokens Prod`) hides this information, forcing attackers to guess.
 
 ## 7. What is the purpose of the `demo` folder inside `src`, and what do its files do?
-**Answer:** The `demo` folder isolates the placeholder code used exclusively for this presentation's dummy data. 
-*   **`api.py`**: Contains the hardcoded dummy statistics for the India Map and the API endpoints that serve this data to the React dashboard. By keeping it isolated in a `demo` feature module, it can be safely and easily deleted once you hook up a real database table for that dashboard data, without affecting the rest of the application.
+**Answer:** The `demo` folder isolates the synthetic showcase data used for this template's map/chart/table gallery pages -- it's real, DB-backed data (seeded via `scripts/seed.py`, migrated via Alembic like every other table), not hardcoded in the route handlers.
+*   **`api.py`**: The API endpoints (`/demo/map/states`, `/demo/charts`, `/demo/tables`) that serve this data to the React dashboard.
+*   **`models.py`** / **`repository.py`**: The SQLModel tables and queries backing it (36 states/UTs, 8 chart datasets, 3 table datasets).
+*   **`seed_data.py`**: The dataset definitions and randomized-value generation the seed script uses.
+
+Because it's isolated in its own feature module, it can still be safely deleted once you replace it with real project data, without affecting the rest of the application.
 
 ## 8. What is the purpose of the `utils` folder?
 **Answer:** The `utils` folder is for shared, reusable helper functions that don't belong to any specific feature (like Auth or Users). 

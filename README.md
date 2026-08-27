@@ -7,11 +7,19 @@ Production-ready backend engineering template for building secure, scalable, and
 ## Features
 
 - **Framework**: Python + FastAPI
-- **Database**: MySQL + SQLModel (SQLAlchemy)
-- **Authentication**: JWT (JSON Web Tokens) with Secure HTTP-Only Cookies
-- **Security**: SlowAPI Rate Limiting & Strict CSP Middleware (VAPT Compliant)
+- **Database**: MySQL + SQLModel (SQLAlchemy), migrations via Alembic
+- **Authentication**: JWT access tokens + opaque, DB-backed, rotating
+  refresh tokens (reuse detection included) in Secure HttpOnly cookies;
+  account lockout after repeated failed logins
+- **Authorization**: Permission-based RBAC (Role/Permission/UserRole/
+  RolePermission) -- routes declare a required permission, never a role
+  name
+- **Security**: Double-submit CSRF, global + per-endpoint rate
+  limiting, strict CSP middleware (VAPT Compliant), structured JSON
+  logging with credential/token redaction
+- **Testing**: pytest, 85%+ coverage enforced, Pyright type-checked
 - **Linting**: Ruff
-- **Infrastructure**: Docker & Docker Compose
+- **Infrastructure**: Docker & Docker Compose, non-root runtime, container healthcheck
 - **Architecture**: Domain-Driven / Feature-Based Modularity
 
 ---
@@ -61,24 +69,43 @@ docker compose up -d --build
 
 ### Apply Migrations & Seed Data
 
-The `users` table is managed by Alembic, not created automatically on
-boot. After the containers are up, apply migrations and seed a few
-default accounts for local login (`admin@example.com` /
-`manager@example.com` / `user@example.com`, all with password
-`password`):
+The database schema (users, refresh tokens, roles/permissions, demo
+data) is managed by Alembic, not created automatically on boot. After
+the containers are up, apply migrations and seed roles/permissions,
+default accounts, and demo/showcase data:
 
 ```bash
 docker compose exec api alembic upgrade head
 docker compose exec api python -m scripts.seed
 ```
 
-Both are safe to re-run (`alembic upgrade head` is a no-op once
-up to date; the seed script skips any email that already exists).
+Both are safe to re-run (`alembic upgrade head` is a no-op once up to
+date; the seed script upserts roles/permissions/demo data and skips
+any user email that already exists). The seed script creates three
+default accounts, each holding the role matching its name, all with
+password `password`:
+
+| Email | Role | Permissions |
+|---|---|---|
+| `admin@example.com` | admin | `users:read`, `users:write`, `roles:manage` |
+| `manager@example.com` | manager | `users:read` |
+| `user@example.com` | user | *(none)* |
 
 ### Accessing the Server
 
 Once running, the interactive Swagger documentation is instantly available at:
 👉 `http://localhost:8000/docs`
+
+### Running Tests, Lint, and Type Checking Locally
+
+```bash
+just lint       # ruff check + ruff format
+just typecheck  # pyright
+just test       # pytest, with coverage enforced (85% floor)
+```
+
+(Requires a local Python environment with `pip install -e .[dev]` --
+see `justfile` for the exact commands if you don't use `just`.)
 
 ---
 

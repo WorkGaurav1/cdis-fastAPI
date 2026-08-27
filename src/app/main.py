@@ -20,8 +20,7 @@ configure_logging()
 
 # Initialize the core FastAPI web application using settings from our config file
 app = FastAPI(
-    title=settings.PROJECT_NAME,
-    openapi_url=f"{settings.API_V1_STR}/openapi.json"
+    title=settings.PROJECT_NAME, openapi_url=f"{settings.API_V1_STR}/openapi.json"
 )
 
 # One structured log line per request (method/path/status/duration/request
@@ -59,11 +58,13 @@ app.add_middleware(
 app.state.limiter = limiter
 app.add_middleware(SlowAPIMiddleware)
 
+
 @app.middleware("http")
 async def add_security_headers(request: Request, call_next):
     # Middleware to globally inject security headers to satisfy VAPT Task 1.5.
     response = await call_next(request)
-    # Relaxed CSP to allow FastAPI's Swagger UI to load its external JS/CSS from jsdelivr
+    # Relaxed CSP to allow FastAPI's Swagger UI to load its external
+    # JS/CSS from jsdelivr
     response.headers["Content-Security-Policy"] = (
         "default-src 'self'; "
         "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
@@ -76,17 +77,19 @@ async def add_security_headers(request: Request, call_next):
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     return response
 
+
 # Feature Routers
 # Attach feature routers to the main app, automatically prefixing all URLs
 app.include_router(auth.router, prefix=f"{settings.API_V1_STR}/auth", tags=["auth"])
 app.include_router(users.router, prefix=f"{settings.API_V1_STR}/users", tags=["users"])
 app.include_router(demo.router, prefix=f"{settings.API_V1_STR}/demo", tags=["demo"])
 
+
 @app.get("/health", tags=["health"])
 def health_check():
     """
     Standard health check endpoint.
-    Used by load balancers and container orchestrators (like Docker/Kubernetes) to verify the server is running.
+    Used by load balancers and container orchestrators (like Docker/
+    Kubernetes) to verify the server is running.
     """
     return {"status": "ok"}
-

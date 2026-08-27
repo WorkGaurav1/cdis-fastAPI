@@ -1,3 +1,14 @@
+[build-system]
+# Explicit, not strictly required today: `pip install --no-deps -e .` /
+# `pip install --no-deps .` (Dockerfile, CI) both work via pip's implicit
+# legacy-setuptools fallback when no [build-system] table is declared.
+# Declaring it explicitly removes the dependency on that fallback ever
+# staying implicit-default -- this project is an application, not a
+# published package, so this is about install reproducibility, not
+# packaging for PyPI.
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "cdis-template-fastapi"
 version = "0.1.0"

@@ -9,9 +9,10 @@ on:
 # Stage order: lint -> format check -> type check -> test (coverage
 # enforced via pyproject.toml's [tool.coverage.report] fail_under,
 # applied automatically since pytest's addopts always runs --cov) ->
-# build. Mirrors the spirit of the Node backend's own locked CI order
-# (lint -> type-check -> tests -> build -> ... -> coverage -> security),
-# adapted to this project's simpler single-job shape.
+# dependency audit -> build. Mirrors the spirit of the Node backend's
+# own locked CI order (lint -> type-check -> tests -> build -> ... ->
+# coverage -> security), adapted to this project's simpler single-job
+# shape.
 jobs:
   lint-and-test:
     runs-on: ubuntu-latest
@@ -50,6 +51,11 @@ jobs:
     - name: Test with pytest (coverage threshold enforced via pyproject.toml)
       run: |
         pytest
+
+    - name: Audit dependencies for known vulnerabilities
+      run: |
+        pip-audit -r requirements.lock
+        pip-audit -r requirements-dev.lock
 
   build-image:
     needs: lint-and-test

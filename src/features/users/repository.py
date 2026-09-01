@@ -5,7 +5,7 @@
 
 from datetime import datetime
 
-from sqlalchemy import update
+from sqlalchemy import func, update
 from sqlmodel import Session, col, select
 
 from features.users.models import User
@@ -20,8 +20,16 @@ def get_user_by_email(session: Session, email: str) -> User | None:
     return session.exec(select(User).where(User.email == email)).first()
 
 
-def list_users(session: Session, skip: int = 0, limit: int = 100) -> list[User]:
-    return list(session.exec(select(User).offset(skip).limit(limit)).all())
+def list_users(session: Session, offset: int = 0, limit: int = 100) -> list[User]:
+    # Param named `offset`, not `skip` -- matches the Node backend's
+    # userRepository.findAll()/pagination.dto.ts exactly, so a shared
+    # frontend (or any client) can point at either backend with the
+    # same query-string contract.
+    return list(session.exec(select(User).offset(offset).limit(limit)).all())
+
+
+def count_users(session: Session) -> int:
+    return session.exec(select(func.count()).select_from(User)).one()
 
 
 def create_user(

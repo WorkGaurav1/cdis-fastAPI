@@ -1,5 +1,5 @@
 # Builder stage
-FROM python:3.10-slim AS builder
+FROM python:3.14-slim AS builder
 
 WORKDIR /app
 COPY pyproject.toml requirements.lock .
@@ -16,7 +16,7 @@ RUN pip install --no-cache-dir pip==23.2.1 && \
     pip wheel --no-cache-dir --wheel-dir /app/wheels --no-deps .
 
 # Final stage
-FROM python:3.10-slim
+FROM python:3.14-slim
 
 WORKDIR /app
 
